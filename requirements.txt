@@ -1,0 +1,17 @@
+# HTTP requests
+requests>=2.31.0
+
+# HTML parsing
+beautifulsoup4>=4.12.2
+
+# PDF text extraction
+pdfplumber>=0.10.2
+
+# Database ORM
+SQLAlchemy>=2.0.29
+
+# Optional: convenience utilities for SQLAlchemy (e.g., for checking DB exists)
+sqlalchemy-utils>=0.41.1
+
+# Progress bars for downloads
+tqdm>=4.66.2
