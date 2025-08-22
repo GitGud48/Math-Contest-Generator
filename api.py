@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.expression import func
 from models import Problem, Year
 
 app = Flask(__name__, static_folder=".", static_url_path="")
@@ -19,7 +20,7 @@ def serve_index():
 def get_problems():
     try:
         sess = Session()
-        problems = sess.query(Problem).limit(20).all()
+        problems = sess.query(Problem).order_by(func.random()).limit(20).all()
         result = [
             {
                 "label": p.label,

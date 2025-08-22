@@ -34,49 +34,237 @@
     hr {
       margin: 20px 0;
     }
+    .controls {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .btn {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .btn:hover {
+      background-color: #0056b3;
+    }
+    .btn:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+    }
+    .random-problem {
+      border: 2px solid #007bff;
+      border-radius: 5px;
+      margin: 10px 0;
+      padding: 10px;
+    }
+    .problem-count {
+      font-style: italic;
+      color: #666;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <h1>Putnam Problems</h1>
-  <div id="problems">Loading problems...</div>
+  
+  <div class="controls">
+    <button id="loadAllBtn" class="btn">Load All Problems</button>
+    <button id="randomBtn" class="btn" disabled>Random Problem</button>
+    <button id="clearBtn" class="btn">Clear</button>
+  </div>
+  
+  <div id="problems">Click "Load All Problems" to start</div>
 
   <script>
-    window.onload = function() {
+    let allProblems = []; // Store all problems for random selection
+    
+    // Custom LaTeX text formatter function
+    function formatLatexText(text) {
+  if (!text) return '';
+  
+  let formatted = text
+    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+    .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
+    .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
+    .replace(/\\textsc\{([^}]+)\}/g, '<span style="font-variant: small-caps">$1</span>')
+    .replace(/\\texttt\{([^}]+)\}/g, '<code>$1</code>')
+    .replace(/---/g, '—')  // em dash
+    .replace(/--/g, '–');  // en dash
+
+  // Convert enumerate environment
+  formatted = formatted.replace(
+    /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+    function(match, content) {
+      const items = content.split('\\item').slice(1); // Remove empty first element
+      const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
+      return `<ol>${listItems}</ol>`;
+    }
+  );
+
+  // Convert itemize environment
+  formatted = formatted.replace(
+    /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+    function(match, content) {
+      const items = content.split('\\item').slice(1);
+      const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
+      return `<ul>${listItems}</ul>`;
+    }
+  );
+
+  return formatted;
+}
+
+
+    function renderProblem(problem, isRandom = false) {
+      const div = document.createElement('div');
+      if (isRandom) {
+        div.className = 'random-problem';
+      }
+      
+      // Format LaTeX text commands before inserting HTML
+      const formattedStatement = formatLatexText(problem.statement);
+      const formattedSolution = formatLatexText(problem.solution);
+      
+      div.innerHTML = `
+        <h3>${problem.year} - ${problem.label}</h3>
+        <div class="statement">${formattedStatement}</div>
+        <details>
+          <summary>Solution</summary>
+          <div class="solution">${formattedSolution}</div>
+        </details>
+        ${isRandom ? '' : '<hr>'}
+      `;
+      
+      return div;
+    }
+
+    function typesetMath() {
+      // Wait for MathJax to be ready, then typeset
+      if (window.MathJax && MathJax.startup) {
+        MathJax.startup.promise.then(() => {
+          return MathJax.typesetPromise();
+        }).catch((err) => console.log('MathJax error:', err.message));
+      }
+    }
+
+    function loadAllProblems() {
+      const container = document.getElementById('problems');
+      const loadAllBtn = document.getElementById('loadAllBtn');
+      const randomBtn = document.getElementById('randomBtn');
+      
+      loadAllBtn.disabled = true;
+      loadAllBtn.textContent = 'Loading...';
+      container.innerHTML = 'Loading problems...';
+
       fetch('/problems')
-        .then(res => res.json())
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
         .then(data => {
-          const container = document.getElementById('problems');
+          allProblems = data; // Store for random selection
           container.innerHTML = '';
 
           if (!Array.isArray(data) || data.length === 0) {
             container.innerHTML = "<p>No problems found.</p>";
+            loadAllBtn.textContent = 'Load All Problems';
+            loadAllBtn.disabled = false;
             return;
           }
 
           data.forEach(problem => {
-            const div = document.createElement('div');
-            div.innerHTML = `
-              <h3>${problem.year} - ${problem.label}</h3>
-              <div class="statement">${problem.statement}</div>
-              <details>
-                <summary>Solution</summary>
-                <div class="solution">${problem.solution}</div>
-              </details>
-              <hr>
-            `;
+            const div = renderProblem(problem);
             container.appendChild(div);
           });
 
-          // Wait for MathJax to be ready, then typeset
-          MathJax.startup.promise.then(() => {
-            return MathJax.typesetPromise();
-          }).catch((err) => console.log('MathJax error:', err.message));
+          // Add problem count
+          const countDiv = document.createElement('div');
+          countDiv.className = 'problem-count';
+          countDiv.textContent = `Total problems loaded: ${data.length}`;
+          container.appendChild(countDiv);
+
+          // Enable random button
+          randomBtn.disabled = false;
+          loadAllBtn.textContent = 'Reload All Problems';
+          loadAllBtn.disabled = false;
+
+          typesetMath();
         })
         .catch(err => {
           console.error("Fetch error:", err);
-          document.getElementById('problems').innerHTML = "<p>Failed to load problems.</p>";
+          container.innerHTML = `<p>Failed to load problems: ${err.message}</p>`;
+          loadAllBtn.textContent = 'Load All Problems';
+          loadAllBtn.disabled = false;
         });
-    };
+    }
+
+    function showRandomProblem() {
+      if (allProblems.length === 0) {
+        const container = document.getElementById('problems');
+        container.innerHTML = '<p>Please load problems first by clicking "Load All Problems"!</p>';
+        return;
+      }
+
+      const container = document.getElementById('problems');
+      const randomIndex = Math.floor(Math.random() * allProblems.length);
+      const randomProblem = allProblems[randomIndex];
+      
+      // Clear container and show only the random problem
+      container.innerHTML = '';
+      
+      const div = renderProblem(randomProblem, true);
+      container.appendChild(div);
+      
+      // Add info about the selection
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'problem-count';
+      infoDiv.innerHTML = `<strong>Random Problem:</strong> ${randomIndex + 1} of ${allProblems.length} total problems<br>
+                          <small>Click "Random Problem" again for another, or "Load All Problems" to see all</small>`;
+      container.appendChild(infoDiv);
+
+      typesetMath();
+    }
+
+    function clearProblems() {
+      const container = document.getElementById('problems');
+      const randomBtn = document.getElementById('randomBtn');
+      
+      container.innerHTML = 'Click "Load All Problems" to start';
+      allProblems = []; // Clear stored problems
+      randomBtn.disabled = true; // Disable random button
+    }
+
+    // Event listeners
+    document.getElementById('loadAllBtn').addEventListener('click', loadAllProblems);
+    document.getElementById('randomBtn').addEventListener('click', showRandomProblem);
+    document.getElementById('clearBtn').addEventListener('click', clearProblems);
+
+    // Keyboard shortcuts (optional)
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'r' && e.ctrlKey) {
+        e.preventDefault();
+        showRandomProblem();
+      } else if (e.key === 'a' && e.ctrlKey) {
+        e.preventDefault();
+        loadAllProblems();
+      } else if (e.key === 'c' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        clearProblems();
+      }
+    });
+
+    // Auto-load problems when page loads (optional)
+    window.addEventListener('load', function() {
+      // Uncomment the line below if you want problems to load automatically
+      // loadAllProblems();
+    });
   </script>
 </body>
 </html>
