@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Putnam Problems</title>
+</head>
+<body>
+  <h1>Putnam Problems</h1>
+  <div id="problems"></div>
+  <script>
+    fetch('http://localhost:5000/problems')
+      .then(response => response.json())
+      .then(data => {
+        const container = document.getElementById('problems');
+        data.forEach(problem => {
+       h   const div = document.createElement('div');
+          div.innerHTML = `<h3>${problem.year} - ${problem.label}</h3>
+                           <pre>${problem.statement}</pre>
+                           <details><summary>Solution</summary><pre>${problem.solution}</pre></details>
+                           <hr>`;
+          container.appendChild(div);
+        });
+      });
+  </script>
+</body>
+</html>

@@ -1,4 +1,6 @@
 # models.py
+# this is the data shape for our official putnam problems. other sources might require different models.
+
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -15,7 +17,9 @@ class Year(Base):
     solutions_pdf_url = Column(String, nullable=True)    # Solutions PDF
     problems_tex_url = Column(String, nullable=True)     # Problems TeX
     solutions_tex_url = Column(String, nullable=True)    # Solutions TeX
-
+# note: above, maybe sometimes certain files will be unavailable; should we set nullable to false?
+# this is just a matter of how the website gives data, if it always gives all 4 files, ignore.
+# also, PDF might be redundant UNLESS we want to give user option to view pdf.
     problems = relationship("Problem", back_populates="year")
 
     def __repr__(self):
@@ -29,10 +33,16 @@ class Problem(Base):
 
     part = Column(String(1), nullable=True)     # 'A' or 'B'
     number = Column(Integer, nullable=True)     # 1–6
-    label = Column(String, nullable=True)       # e.g., 'A1', 'B3'
+    #def get_label(self):
+    #    '''
+    #    e.g., 'A1', 'B3'
+    #    '''
+    #    return f'{self.part}{self.number}'
+    label = Column(String, nullable=True)       #redundant, can use a method defined above, 
+                                                #but would need to rework scrapper file, lowkey doesnt matter
 
-    statement = Column(Text, nullable=True)     # Problem text (LaTeX or PDF text)
-    solution = Column(Text, nullable=True)      # Solution text (LaTeX or PDF text)
+    statement = Column(Text, nullable=True)     # Problem text (LaTeX or PDF text) LaTeX > PDF probably
+    solution = Column(Text, nullable=True)      # Solution text (LaTeX or PDF text) LaTeX > PDF probably
 
     pdf_url = Column(String, nullable=True)     # Source file URL
 
