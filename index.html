@@ -3,24 +3,80 @@
 <head>
   <meta charset="UTF-8">
   <title>Putnam Problems</title>
+  <!-- MathJax v3 Configuration -->
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$','$'], ['\\(','\\)']],
+      displayMath: [['$$','$$'], ['\\[','\\]']]
+    }
+  };
+  </script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.6;
+    }
+    .statement, .solution {
+      background: #f4f4f4;
+      padding: 10px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    hr {
+      margin: 20px 0;
+    }
+  </style>
 </head>
 <body>
   <h1>Putnam Problems</h1>
-  <div id="problems"></div>
+  <div id="problems">Loading problems...</div>
+
   <script>
-    fetch('http://localhost:5000/problems')
-      .then(response => response.json())
-      .then(data => {
-        const container = document.getElementById('problems');
-        data.forEach(problem => {
-       h   const div = document.createElement('div');
-          div.innerHTML = `<h3>${problem.year} - ${problem.label}</h3>
-                           <pre>${problem.statement}</pre>
-                           <details><summary>Solution</summary><pre>${problem.solution}</pre></details>
-                           <hr>`;
-          container.appendChild(div);
+    window.onload = function() {
+      fetch('/problems')
+        .then(res => res.json())
+        .then(data => {
+          const container = document.getElementById('problems');
+          container.innerHTML = '';
+
+          if (!Array.isArray(data) || data.length === 0) {
+            container.innerHTML = "<p>No problems found.</p>";
+            return;
+          }
+
+          data.forEach(problem => {
+            const div = document.createElement('div');
+            div.innerHTML = `
+              <h3>${problem.year} - ${problem.label}</h3>
+              <div class="statement">${problem.statement}</div>
+              <details>
+                <summary>Solution</summary>
+                <div class="solution">${problem.solution}</div>
+              </details>
+              <hr>
+            `;
+            container.appendChild(div);
+          });
+
+          // Wait for MathJax to be ready, then typeset
+          MathJax.startup.promise.then(() => {
+            return MathJax.typesetPromise();
+          }).catch((err) => console.log('MathJax error:', err.message));
+        })
+        .catch(err => {
+          console.error("Fetch error:", err);
+          document.getElementById('problems').innerHTML = "<p>Failed to load problems.</p>";
         });
-      });
+    };
   </script>
 </body>
 </html>
