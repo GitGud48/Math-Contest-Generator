@@ -22,7 +22,7 @@ def get_problems():
         sess = Session()
         problems = sess.query(Problem).order_by(func.random()).limit(20).all()
         result = [
-            {
+            { #yo
                 "label": p.label,
                 "statement": p.statement,
                 "solution": p.solution,
