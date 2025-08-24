@@ -8,7 +8,7 @@ import glob
 
 # Import Putnam models (original models.py)
 try:
-    from models import Problem as PutnamProblem, Year
+    from putnam_models import Problem as PutnamProblem, Year
     PUTNAM_SCHEMA_AVAILABLE = True
 except ImportError:
     PUTNAM_SCHEMA_AVAILABLE = False
@@ -21,7 +21,7 @@ try:
 except ImportError:
     AOPS_SCHEMA_AVAILABLE = False
     print("⚠️  Warning: aops_models.py not found or not importable")
-from putnam_models import Problem, Year
+
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
