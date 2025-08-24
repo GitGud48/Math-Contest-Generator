@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Base, Year, Problem  # Your existing models
+from putnam_models import Base, Year, Problem  # Your existing models
 import pdfplumber
 
 BASE_URL = "https://kskedlaya.org/putnam-archive/"

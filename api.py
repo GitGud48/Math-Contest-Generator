@@ -21,6 +21,7 @@ try:
 except ImportError:
     AOPS_SCHEMA_AVAILABLE = False
     print("⚠️  Warning: aops_models.py not found or not importable")
+from putnam_models import Problem, Year
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
