@@ -15,3 +15,48 @@ sqlalchemy-utils>=0.41.1
 
 # Progress bars for downloads
 tqdm>=4.66.2
+
+# Web scraping with browser automation
+selenium>=4.15.0
+
+# XML parsing (lxml parser for BeautifulSoup - faster and more robust)
+lxml>=4.9.3
+
+# Python utilities for working with URLs
+urllib3>=2.0.7
+
+# Date and time utilities
+python-dateutil>=2.8.2
+
+# Logging configuration
+colorlog>=6.7.0
+
+# Optional: For handling JavaScript-heavy pages
+requests-html>=0.10.0
+
+# Optional: For advanced web scraping (alternative to selenium)
+playwright>=1.40.0
+
+# Optional: For parsing mathematical expressions
+sympy>=1.12
+
+# Optional: For better regex support
+regex>=2023.10.3
+
+# Optional: For handling different text encodings
+chardet>=5.2.0
+
+# Optional: For fuzzy string matching (useful for contest name parsing)
+fuzzywuzzy>=0.18.0
+python-Levenshtein>=0.21.1
+
+# Optional: For configuration file handling
+pyyaml>=6.0.1
+
+# Optional: For data validation
+pydantic>=2.5.0
+
+# Development dependencies (optional)
+# pytest>=7.4.3
+# black>=23.11.0
+# flake8>=6.1.0

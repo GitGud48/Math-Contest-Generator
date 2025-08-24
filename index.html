@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Putnam Problems</title>
+  <title>Math Contest Problems</title>
   <!-- MathJax v3 Configuration -->
   <script>
   MathJax = {
@@ -37,6 +37,11 @@
     .controls {
       margin-bottom: 20px;
       text-align: center;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
     }
     .btn {
       background-color: #007bff;
@@ -55,6 +60,30 @@
       background-color: #6c757d;
       cursor: not-allowed;
     }
+    .database-selector {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 10px;
+    }
+    .database-selector label {
+      font-weight: bold;
+      color: #333;
+    }
+    .database-selector select {
+      padding: 8px 12px;
+      border: 2px solid #007bff;
+      border-radius: 5px;
+      font-size: 16px;
+      background: white;
+      cursor: pointer;
+      min-width: 200px;
+    }
+    .database-selector select:focus {
+      outline: none;
+      border-color: #0056b3;
+      box-shadow: 0 0 5px rgba(0,123,255,0.3);
+    }
     .random-problem {
       border: 2px solid #007bff;
       border-radius: 5px;
@@ -66,59 +95,91 @@
       color: #666;
       margin-top: 10px;
     }
+    .database-info {
+      background: #e7f3ff;
+      border: 1px solid #007bff;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #666;
+    }
+    .error {
+      background: #ffebee;
+      border: 1px solid #f44336;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 10px 0;
+      color: #d32f2f;
+    }
   </style>
 </head>
 <body>
-  <h1>Putnam Problems</h1>
+  <h1>Math Contest Problems</h1>
   
   <div class="controls">
+    <div class="database-selector">
+      <label for="databaseSelect">Database:</label>
+      <select id="databaseSelect">
+        <option value="">Loading databases...</option>
+      </select>
+    </div>
+    
     <button id="loadAllBtn" class="btn">Load All Problems</button>
     <button id="randomBtn" class="btn" disabled>Random Problem</button>
     <button id="clearBtn" class="btn">Clear</button>
   </div>
   
-  <div id="problems">Click "Load All Problems" to start</div>
+  <div id="databaseInfo" class="database-info" style="display: none;"></div>
+  
+  <div id="problems">Select a database and click "Load All Problems" to start</div>
 
   <script>
-    let allProblems = []; // Store all problems for random selection
-    
-    // Custom LaTeX text formatter function
+    let allProblems = [];
+    let availableDatabases = [];
+    let currentDatabase = '';
+
+    // Format LaTeX text
     function formatLatexText(text) {
-  if (!text) return '';
-  
-  let formatted = text
-    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
-    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
-    .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
-    .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
-    .replace(/\\textsc\{([^}]+)\}/g, '<span style="font-variant: small-caps">$1</span>')
-    .replace(/\\texttt\{([^}]+)\}/g, '<code>$1</code>')
-    .replace(/---/g, '—')  // em dash
-    .replace(/--/g, '–');  // en dash
+      if (!text) return '';
+      
+      let formatted = text
+        .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+        .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
+        .replace(/\\textsc\{([^}]+)\}/g, '<span style="font-variant: small-caps">$1</span>')
+        .replace(/\\texttt\{([^}]+)\}/g, '<code>$1</code>')
+        .replace(/---/g, '—')
+        .replace(/--/g, '–');
 
-  // Convert enumerate environment
-  formatted = formatted.replace(
-    /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
-    function(match, content) {
-      const items = content.split('\\item').slice(1); // Remove empty first element
-      const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
-      return `<ol>${listItems}</ol>`;
+      // Convert enumerate environment
+      formatted = formatted.replace(
+        /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
+        function(match, content) {
+          const items = content.split('\\item').slice(1);
+          const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
+          return `<ol>${listItems}</ol>`;
+        }
+      );
+
+      // Convert itemize environment
+      formatted = formatted.replace(
+        /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
+        function(match, content) {
+          const items = content.split('\\item').slice(1);
+          const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
+          return `<ul>${listItems}</ul>`;
+        }
+      );
+
+      return formatted;
     }
-  );
-
-  // Convert itemize environment
-  formatted = formatted.replace(
-    /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
-    function(match, content) {
-      const items = content.split('\\item').slice(1);
-      const listItems = items.map(item => `<li>${item.trim()}</li>`).join('');
-      return `<ul>${listItems}</ul>`;
-    }
-  );
-
-  return formatted;
-}
-
 
     function renderProblem(problem, isRandom = false) {
       const div = document.createElement('div');
@@ -126,7 +187,6 @@
         div.className = 'random-problem';
       }
       
-      // Format LaTeX text commands before inserting HTML
       const formattedStatement = formatLatexText(problem.statement);
       const formattedSolution = formatLatexText(problem.solution);
       
@@ -144,11 +204,66 @@
     }
 
     function typesetMath() {
-      // Wait for MathJax to be ready, then typeset
       if (window.MathJax && MathJax.startup) {
         MathJax.startup.promise.then(() => {
           return MathJax.typesetPromise();
         }).catch((err) => console.log('MathJax error:', err.message));
+      }
+    }
+
+    function loadDatabases() {
+      const select = document.getElementById('databaseSelect');
+      select.innerHTML = '<option value="">Loading databases...</option>';
+      
+      fetch('/databases')
+        .then(res => res.json())
+        .then(data => {
+          availableDatabases = data.databases || [];
+          select.innerHTML = '';
+          
+          if (availableDatabases.length === 0) {
+            select.innerHTML = '<option value="">No databases available</option>';
+            return;
+          }
+          
+          // Add databases to select
+          availableDatabases.forEach(db => {
+            const option = document.createElement('option');
+            option.value = db.id;
+            option.textContent = `${db.name} (${db.problem_count} problems)`;
+            select.appendChild(option);
+          });
+          
+          // Set default selection (prefer Putnam if available)
+          const putnamDb = availableDatabases.find(db => db.id === 'putnam');
+          if (putnamDb) {
+            select.value = 'putnam';
+            currentDatabase = 'putnam';
+          } else {
+            select.value = availableDatabases[0].id;
+            currentDatabase = availableDatabases[0].id;
+          }
+          
+          updateDatabaseInfo();
+        })
+        .catch(err => {
+          console.error('Error loading databases:', err);
+          select.innerHTML = '<option value="">Error loading databases</option>';
+        });
+    }
+
+    function updateDatabaseInfo() {
+      const infoDiv = document.getElementById('databaseInfo');
+      const selectedDb = availableDatabases.find(db => db.id === currentDatabase);
+      
+      if (selectedDb) {
+        infoDiv.style.display = 'block';
+        infoDiv.innerHTML = `
+          <strong>Selected:</strong> ${selectedDb.name} 
+          <span style="color: #666;">(${selectedDb.problem_count} problems available)</span>
+        `;
+      } else {
+        infoDiv.style.display = 'none';
       }
     }
 
@@ -157,11 +272,18 @@
       const loadAllBtn = document.getElementById('loadAllBtn');
       const randomBtn = document.getElementById('randomBtn');
       
+      if (!currentDatabase) {
+        container.innerHTML = '<div class="error">Please select a database first</div>';
+        return;
+      }
+      
       loadAllBtn.disabled = true;
       loadAllBtn.textContent = 'Loading...';
-      container.innerHTML = 'Loading problems...';
+      container.innerHTML = '<div class="loading">Loading problems...</div>';
 
-      fetch('/problems')
+      const url = `/problems?database=${currentDatabase}&limit=50`;
+      
+      fetch(url)
         .then(res => {
           if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
@@ -169,17 +291,17 @@
           return res.json();
         })
         .then(data => {
-          allProblems = data; // Store for random selection
+          allProblems = data.problems || [];
           container.innerHTML = '';
 
-          if (!Array.isArray(data) || data.length === 0) {
-            container.innerHTML = "<p>No problems found.</p>";
+          if (allProblems.length === 0) {
+            container.innerHTML = '<div class="error">No problems found in this database.</div>';
             loadAllBtn.textContent = 'Load All Problems';
             loadAllBtn.disabled = false;
             return;
           }
 
-          data.forEach(problem => {
+          allProblems.forEach(problem => {
             const div = renderProblem(problem);
             container.appendChild(div);
           });
@@ -187,7 +309,9 @@
           // Add problem count
           const countDiv = document.createElement('div');
           countDiv.className = 'problem-count';
-          countDiv.textContent = `Total problems loaded: ${data.length}`;
+          countDiv.innerHTML = `
+            <strong>Loaded:</strong> ${allProblems.length} problems from ${data.database_name}
+          `;
           container.appendChild(countDiv);
 
           // Enable random button
@@ -199,7 +323,7 @@
         })
         .catch(err => {
           console.error("Fetch error:", err);
-          container.innerHTML = `<p>Failed to load problems: ${err.message}</p>`;
+          container.innerHTML = `<div class="error">Failed to load problems: ${err.message}</div>`;
           loadAllBtn.textContent = 'Load All Problems';
           loadAllBtn.disabled = false;
         });
@@ -208,7 +332,7 @@
     function showRandomProblem() {
       if (allProblems.length === 0) {
         const container = document.getElementById('problems');
-        container.innerHTML = '<p>Please load problems first by clicking "Load All Problems"!</p>';
+        container.innerHTML = '<div class="error">Please load problems first by clicking "Load All Problems"!</div>';
         return;
       }
 
@@ -216,17 +340,17 @@
       const randomIndex = Math.floor(Math.random() * allProblems.length);
       const randomProblem = allProblems[randomIndex];
       
-      // Clear container and show only the random problem
       container.innerHTML = '';
       
       const div = renderProblem(randomProblem, true);
       container.appendChild(div);
       
-      // Add info about the selection
       const infoDiv = document.createElement('div');
       infoDiv.className = 'problem-count';
-      infoDiv.innerHTML = `<strong>Random Problem:</strong> ${randomIndex + 1} of ${allProblems.length} total problems<br>
-                          <small>Click "Random Problem" again for another, or "Load All Problems" to see all</small>`;
+      infoDiv.innerHTML = `
+        <strong>Random Problem:</strong> ${randomIndex + 1} of ${allProblems.length} total problems<br>
+        <small>Click "Random Problem" again for another, or "Load All Problems" to see all</small>
+      `;
       container.appendChild(infoDiv);
 
       typesetMath();
@@ -236,17 +360,23 @@
       const container = document.getElementById('problems');
       const randomBtn = document.getElementById('randomBtn');
       
-      container.innerHTML = 'Click "Load All Problems" to start';
-      allProblems = []; // Clear stored problems
-      randomBtn.disabled = true; // Disable random button
+      container.innerHTML = 'Select a database and click "Load All Problems" to start';
+      allProblems = [];
+      randomBtn.disabled = true;
     }
 
     // Event listeners
     document.getElementById('loadAllBtn').addEventListener('click', loadAllProblems);
     document.getElementById('randomBtn').addEventListener('click', showRandomProblem);
     document.getElementById('clearBtn').addEventListener('click', clearProblems);
+    
+    document.getElementById('databaseSelect').addEventListener('change', function(e) {
+      currentDatabase = e.target.value;
+      updateDatabaseInfo();
+      clearProblems(); // Clear current problems when database changes
+    });
 
-    // Keyboard shortcuts (optional)
+    // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
       if (e.key === 'r' && e.ctrlKey) {
         e.preventDefault();
@@ -260,10 +390,9 @@
       }
     });
 
-    // Auto-load problems when page loads (optional)
+    // Initialize on page load
     window.addEventListener('load', function() {
-      // Uncomment the line below if you want problems to load automatically
-      // loadAllProblems();
+      loadDatabases();
     });
   </script>
 </body>
