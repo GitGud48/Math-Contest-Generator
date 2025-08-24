@@ -12,7 +12,7 @@ non exhaustive list of things to test/try:
 - do we want to store tex file urls as well as pdf file urls?
 '''
 
-
+# putnam_scraper.py
 import os
 import re
 import requests
@@ -20,11 +20,10 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from putnam_models import Base, Year, Problem  # Your existing models
-import pdfplumber
+from putnam_models import Base, Year, Problem
 
 BASE_URL = "https://kskedlaya.org/putnam-archive/"
-DB_PATH = "putnam.sqlite"
+DB_PATH = "BACKEND/putnam/putnam.sqlite"
 
 # ----------------------------
 # DB Setup
@@ -36,7 +35,6 @@ Session = sessionmaker(bind=engine)
 # ----------------------------
 # Helpers
 # ----------------------------
-
 def get_url(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -49,7 +47,6 @@ def get_url(url):
 
 def get_index_links():
     resp = get_url(BASE_URL)
-    resp.raise_for_status()
     soup = BeautifulSoup(resp.text, "html.parser")
     return [urljoin(BASE_URL, a["href"]) for a in soup.find_all("a", href=True)]
 
@@ -61,28 +58,15 @@ def year_from_filename(fname):
         return year, is_solution
     return None, None
 
-def download_file(url):
-    local_name = os.path.basename(urlparse(url).path)
+def fetch_tex_content(url):
+    if url is None:
+        return ""
     resp = get_url(url)
     resp.raise_for_status()
-    with open(local_name, "wb") as f:
-        f.write(resp.content)
-    return local_name
-
-def extract_pdf_text(path):
-    pages = []
-    with pdfplumber.open(path) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text() or ""
-            pages.append(text)
-    return "\n\n".join(pages)
-
-def extract_tex_text(path):
-    with open(path, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read()
+    return resp.text
 
 def split_problems_from_tex(tex_content):
-    # You can refine this — for now, split by \item[A1], etc.
+    # Split by \item[A1], \item[B3], etc.
     pattern = re.compile(r'\\item\[(A|B)([1-6])\]')
     parts = pattern.split(tex_content)
     problems = []
@@ -92,9 +76,30 @@ def split_problems_from_tex(tex_content):
         problems.append({"label": label, "text": body})
     return problems
 
-def pair_problem_and_solution(problems, solutions):
-    sol_map = {p["label"]: p["text"] for p in solutions}
-    return [(p["label"], p["text"], sol_map.get(p["label"], "")) for p in problems]
+def add_problems_to_db(sess, year_obj, tex_url):
+    tex_content = fetch_tex_content(tex_url)
+    if not tex_content:
+        return
+
+    problems = split_problems_from_tex(tex_content)
+    for p in problems:
+        number = int(p["label"][1])
+        part = p["label"][0]
+        # Avoid duplicates
+        exists = sess.query(Problem).filter_by(year_id=year_obj.id, label=p["label"]).first()
+        if exists:
+            continue
+        prob_obj = Problem(
+            year=year_obj,
+            label=p["label"],
+            part=part,
+            number=number,
+            statement=p["text"],
+            solution=None,
+            pdf_url=None
+        )
+        sess.add(prob_obj)
+    sess.commit()
 
 # ----------------------------
 # Main
@@ -110,7 +115,7 @@ def main():
     for url in all_links:
         fname = os.path.basename(urlparse(url).path)
         year, is_solution = year_from_filename(fname)
-        if not year: #what does this do
+        if not year:
             continue
         entry = by_year.setdefault(year, {"problems_pdf": None, "solutions_pdf": None,
                                           "problems_tex": None, "solutions_tex": None})
@@ -125,10 +130,10 @@ def main():
             else:
                 entry["problems_tex"] = url
 
-
     for year, entry in sorted(by_year.items(), reverse=True):
         print(f"\nProcessing {year}...")
 
+        # Avoid duplicate Year entries
         year_obj = sess.query(Year).filter_by(year=year).first()
         if not year_obj:
             year_obj = Year(
@@ -141,11 +146,9 @@ def main():
             sess.add(year_obj)
             sess.commit()
 
-    # Instead of downloading and extracting, just store URLs
-    # If you want to add Problem rows, you need to know their labels and numbers.
-    # Otherwise, skip adding Problem rows.
+        # Add Problem rows from TeX
+        add_problems_to_db(sess, year_obj, entry["problems_tex"])
 
-    sess.commit()
     print("\nDone. DB saved to putnam.sqlite")
 
 if __name__ == "__main__":
