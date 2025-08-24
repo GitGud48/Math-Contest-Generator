@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from aops_models import Base, Contest, ContestYear, Problem
 
 class IMOScraper:
-    def __init__(self, database_url="sqlite:///imo.sqlite", headless=True):
+    def __init__(self, database_url="sqlite:///imo_problems.sqlite", headless=True):
         """Initialize IMO-specific scraper"""
         # Database setup
         self.engine = create_engine(database_url)
@@ -344,41 +344,11 @@ class IMOScraper:
         except Exception as e:
             self.logger.error(f"Cleanup error: {e}")
 
-# Test with one year to verify structure
-def test_single_year():
-    """Test with just one year to verify everything works"""
-    scraper = IMOScraper(
-        database_url="sqlite:///imo_test.db",
-        headless=False  # Show browser for debugging
-    )
-    
-    try:
-        scraper.run_test_scrape([1960])  # Test with 1960 since we know the structure
-    except KeyboardInterrupt:
-        print("\n⏸️  Testing interrupted")
-    finally:
-        scraper.cleanup()
-
-# Test with recent years
-def test_recent_years():
-    """Test with recent years"""
-    scraper = IMOScraper(
-        database_url="sqlite:///imo_test.db",
-        headless=True
-    )
-    
-    try:
-        scraper.run_test_scrape([2023, 2022, 2021])
-    except KeyboardInterrupt:
-        print("\n⏸️  Testing interrupted")
-    finally:
-        scraper.cleanup()
-
 # Scrape a range of years
 def scrape_year_range():
     """Scrape a specific range of years"""
     scraper = IMOScraper(
-        database_url="sqlite:///imo_complete.db",
+        database_url="sqlite:///imo_problems.sqlite",
         headless=True
     )
     
@@ -393,14 +363,4 @@ def scrape_year_range():
         scraper.cleanup()
 
 if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) > 1 and sys.argv[1] == "--test-single":
-        test_single_year()
-    elif len(sys.argv) > 1 and sys.argv[1] == "--test":
-        test_recent_years()
-    elif len(sys.argv) > 1 and sys.argv[1] == "--full":
-        scrape_year_range()
-    else:
-        # Default: test recent years
-        test_recent_years()
+    scrape_year_range()
