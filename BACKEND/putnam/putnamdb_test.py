@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from BACKEND.putnam.putnam_models import Year, Problem
+from putnam_models import Year, Problem
 
 
 DB_PATH = "putnam.sqlite"

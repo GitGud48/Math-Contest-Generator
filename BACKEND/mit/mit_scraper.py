@@ -1,5 +1,5 @@
 import re
-from BACKEND.mit.mit_models import Base, Category, Problem
+from mit_models import Base, Category, Problem
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
