@@ -8,7 +8,7 @@ import glob
 
 # Import Putnam models (original models.py)
 try:
-    from putnam_models import Problem as PutnamProblem, Year
+    from BACKEND.putnam.putnam_models import Problem as PutnamProblem, Year
     PUTNAM_SCHEMA_AVAILABLE = True
 except ImportError:
     PUTNAM_SCHEMA_AVAILABLE = False
@@ -16,7 +16,7 @@ except ImportError:
 
 # Import AoPS models (aops_models.py)
 try:
-    from aops_models import Problem as AoPSProblem, ContestYear, Contest
+    from BACKEND.aops.aops_models import Problem as AoPSProblem, ContestYear, Contest
     AOPS_SCHEMA_AVAILABLE = True
 except ImportError:
     AOPS_SCHEMA_AVAILABLE = False

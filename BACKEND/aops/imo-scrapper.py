@@ -12,7 +12,7 @@ import time
 import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from aops_models import Base, Contest, ContestYear, Problem
+from BACKEND.aops.aops_models import Base, Contest, ContestYear, Problem
 
 class IMOScraper:
     def __init__(self, database_url="sqlite:///imo_problems.db", headless=True):
