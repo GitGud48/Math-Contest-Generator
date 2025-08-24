@@ -6,22 +6,29 @@ from sqlalchemy.sql.expression import func
 import os
 import glob
 
-# Import Putnam models (original models.py)
+# Import AoPS models (from your aops_models.py)
 try:
-    from BACKEND.putnam.putnam_models import Problem as PutnamProblem, Year
-    PUTNAM_SCHEMA_AVAILABLE = True
-except ImportError:
-    PUTNAM_SCHEMA_AVAILABLE = False
-    print("⚠️  Warning: models.py (Putnam) not found or not importable")
-
-# Import AoPS models (aops_models.py)
-try:
-    from BACKEND.aops.aops_models import Problem as AoPSProblem, ContestYear, Contest
+    from backend.aops.aops_models import Problem, ContestYear, Contest
     AOPS_SCHEMA_AVAILABLE = True
 except ImportError:
     AOPS_SCHEMA_AVAILABLE = False
     print("⚠️  Warning: aops_models.py not found or not importable")
 
+# Import Putnam models (if you still want support for original Putnam database)
+try:
+    from backend.putnam.putnam_models import Problem as PutnamProblem, Year
+    PUTNAM_SCHEMA_AVAILABLE = True
+except ImportError:
+    PUTNAM_SCHEMA_AVAILABLE = False
+    print("⚠️  Warning: putnam_models.py not found or not importable")
+
+# Import MIT models (if you still want support for original MIT database)
+try:
+    from backend.mit.mit_models import Problem as PutnamProblem, Year
+    MIT_SCHEMA_AVAILABLE = True
+except ImportError:
+    MIT_SCHEMA_AVAILABLE = False
+    print("⚠️  Warning: mit_models.py not found or not importable")
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
@@ -39,7 +46,6 @@ class DatabaseManager:
             "./databases/*.sqlite", 
             "./databases/*.sqlite3",
             "./putnam.sqlite",
-            "./aops_contests.db"
         ]
         
         db_files = []
@@ -74,12 +80,12 @@ class DatabaseManager:
         """Detect database schema type"""
         try:
             with engine.connect() as conn:
-                # Check for AoPS schema
+                # Check for AoPS schema (has contests table)
                 result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='contests'"))
                 if result.fetchone():
                     return 'aops'
                 
-                # Check for Putnam schema
+                # Check for Putnam schema (has years table)
                 result = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='years'"))
                 if result.fetchone():
                     return 'putnam'
@@ -97,7 +103,10 @@ class DatabaseManager:
         if schema_type == 'putnam':
             return "Putnam Competition"
         elif schema_type == 'aops':
-            return "Art of Problem Solving (Multiple Contests)"
+            if 'imo' in db_name.lower():
+                return "International Mathematical Olympiad (IMO)"
+            else:
+                return "Art of Problem Solving (Multiple Contests)"
         else:
             return db_name.replace('_', ' ').title()
     
@@ -113,7 +122,8 @@ class DatabaseManager:
             problems = []
             
             if schema_type == 'aops' and AOPS_SCHEMA_AVAILABLE:
-                db_problems = (session.query(AoPSProblem)
+                # Query AoPS database structure (IMO database)
+                db_problems = (session.query(Problem)
                              .join(ContestYear)
                              .join(Contest)
                              .order_by(func.random())
@@ -126,11 +136,14 @@ class DatabaseManager:
                         "statement": p.statement or "Statement not available",
                         "solution": p.solution or "Solution not available",
                         "year": p.contest_year.year,
-                        "contest": p.contest_year.contest.name,
-                        "source": db_name
+                        "contest": p.contest_year.contest.full_name or p.contest_year.contest.name,
+                        "subject": p.subject_area or "Unknown",
+                        "source": db_name,
+                        "problem_url": p.aops_problem_url
                     })
             
             elif schema_type == 'putnam' and PUTNAM_SCHEMA_AVAILABLE:
+                # Query original Putnam database structure
                 db_problems = (session.query(PutnamProblem)
                              .join(Year)
                              .order_by(func.random())
@@ -144,8 +157,35 @@ class DatabaseManager:
                         "solution": p.solution or "Solution not available",
                         "year": p.year.year,
                         "contest": "Putnam Competition",
-                        "source": db_name
+                        "subject": "Mixed",
+                        "source": db_name,
+                        "problem_url": p.pdf_url
                     })
+            
+            elif schema_type == 'generic':
+                # Handle generic database structure
+                with self.databases[db_name]['engine'].connect() as conn:
+                    result = conn.execute(text(f"""
+                        SELECT * FROM problems 
+                        ORDER BY RANDOM() 
+                        LIMIT {limit}
+                    """))
+                    
+                    columns = result.keys()
+                    rows = result.fetchall()
+                    
+                    for row in rows:
+                        row_dict = dict(zip(columns, row))
+                        problems.append({
+                            "label": row_dict.get('label', row_dict.get('problem_label', f"Problem {row_dict.get('id', '?')}")),
+                            "statement": row_dict.get('statement', "Statement not available"),
+                            "solution": row_dict.get('solution', "Solution not available"),
+                            "year": row_dict.get('year', 'Unknown'),
+                            "contest": db_name.replace('_', ' ').title(),
+                            "subject": row_dict.get('subject_area', 'Unknown'),
+                            "source": db_name,
+                            "problem_url": row_dict.get('aops_problem_url', row_dict.get('pdf_url'))
+                        })
             
             session.close()
             return problems
@@ -163,19 +203,23 @@ class DatabaseManager:
                 session = Session()
                 
                 if db_info['schema'] == 'aops' and AOPS_SCHEMA_AVAILABLE:
-                    problem_count = session.query(AoPSProblem).count()
+                    problem_count = session.query(Problem).count()
+                    contest_count = session.query(Contest).count()
                 elif db_info['schema'] == 'putnam' and PUTNAM_SCHEMA_AVAILABLE:
                     problem_count = session.query(PutnamProblem).count()
+                    contest_count = 1  # Only Putnam
                 else:
                     with db_info['engine'].connect() as conn:
                         result = conn.execute(text("SELECT COUNT(*) FROM problems"))
                         problem_count = result.scalar()
+                        contest_count = "Unknown"
                 
                 db_list.append({
                     'id': db_name,
                     'name': db_info['display_name'],
                     'schema': db_info['schema'],
-                    'problem_count': problem_count
+                    'problem_count': problem_count,
+                    'contest_count': contest_count
                 })
                 
                 session.close()
@@ -202,19 +246,32 @@ def get_problems():
     """Get problems from specified database or default"""
     try:
         # Get database from query parameter
-        db_name = request.args.get('database', 'putnam')  # Default to putnam
+        db_name = request.args.get('database')
         limit = int(request.args.get('limit', 20))
         limit = min(limit, 100)
         
-        if db_name not in db_manager.databases:
-            # If requested database doesn't exist, use the first available
-            if db_manager.databases:
+        # If no database specified, prefer IMO database
+        if not db_name:
+            if 'imo_complete' in db_manager.databases:
+                db_name = 'imo_complete'
+            elif 'imo_problems' in db_manager.databases:
+                db_name = 'imo_problems'
+            elif 'imo_test' in db_manager.databases:
+                db_name = 'imo_test'
+            elif db_manager.databases:
                 db_name = list(db_manager.databases.keys())[0]
             else:
                 return jsonify({
                     "problems": [],
                     "error": "No databases available"
                 }), 404
+        
+        if db_name not in db_manager.databases:
+            return jsonify({
+                "problems": [],
+                "error": f"Database '{db_name}' not found",
+                "available_databases": list(db_manager.databases.keys())
+            }), 404
         
         problems = db_manager.get_problems_from_db(db_name, limit)
         
@@ -243,6 +300,25 @@ def get_databases():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/health")
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "healthy",
+        "databases_connected": len(db_manager.databases),
+        "databases": {
+            db_name: {
+                "name": db_data["display_name"],
+                "schema": db_data["schema"]
+            } 
+            for db_name, db_data in db_manager.databases.items()
+        },
+        "schema_support": {
+            "aops": AOPS_SCHEMA_AVAILABLE,
+            "putnam": PUTNAM_SCHEMA_AVAILABLE
+        }
+    })
 
 if __name__ == "__main__":
     print(f"🚀 Starting server with {len(db_manager.databases)} databases")
