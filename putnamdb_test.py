@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Year, Problem
+from putnam_models import Year, Problem
+
 
 DB_PATH = "putnam.sqlite"
 engine = create_engine(f"sqlite:///{DB_PATH}")
