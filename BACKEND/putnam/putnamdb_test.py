@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from putnam_models import Year, Problem
 
 
-DB_PATH = "putnam.sqlite"
+DB_PATH = "BACKEND/putnam/putnam.sqlite"
 engine = create_engine(f"sqlite:///{DB_PATH}")
 Session = sessionmaker(bind=engine)
 sess = Session()

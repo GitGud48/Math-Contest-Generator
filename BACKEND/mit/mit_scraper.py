@@ -14,7 +14,7 @@ for table in reversed(Base.metadata.sorted_tables):
 session.commit()
 
 # --- Load TeX file ---
-with open("mit_problems.tex", "r", encoding="utf-8") as f:
+with open("BACKEND/mit/mit_problems.tex", "r", encoding="utf-8") as f:
     tex = f.read()
 
 # --- Split into categories ---

@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from aops_models import Base, Contest, ContestYear, Problem
 
 class IMOScraper:
-    def __init__(self, database_url="sqlite:///imo_problems.db", headless=True):
+    def __init__(self, database_url="sqlite:///imo.sqlite", headless=True):
         """Initialize IMO-specific scraper"""
         # Database setup
         self.engine = create_engine(database_url)
