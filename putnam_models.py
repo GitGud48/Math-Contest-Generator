@@ -1,4 +1,4 @@
-# models.py
+# putnam_models.py
 # this is the data shape for our official putnam problems. other sources might require different models.
 
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
@@ -17,7 +17,6 @@ class Year(Base):
     solutions_pdf_url = Column(String, nullable=True)    # Solutions PDF
     problems_tex_url = Column(String, nullable=True)     # Problems TeX
     solutions_tex_url = Column(String, nullable=True)    # Solutions TeX
-# note: above, maybe sometimes certain files will be unavailable; should we set nullable to false?
 # this is just a matter of how the website gives data, if it always gives all 4 files, ignore.
 # also, PDF might be redundant UNLESS we want to give user option to view pdf.
     problems = relationship("Problem", back_populates="year")

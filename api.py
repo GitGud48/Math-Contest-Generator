@@ -3,7 +3,7 @@ from flask_cors import CORS
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql.expression import func
-from models import Problem, Year
+from putnam_models import Problem, Year
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
