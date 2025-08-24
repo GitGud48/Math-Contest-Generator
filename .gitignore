@@ -4,3 +4,4 @@ putnam.sqlite
 __pycache__/
 .env
 database/
+debug.*

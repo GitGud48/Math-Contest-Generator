@@ -15,7 +15,7 @@ from sqlalchemy.orm import sessionmaker
 from aops_models import Base, Contest, ContestYear, Problem
 
 class IMOScraper:
-    def __init__(self, database_url="sqlite:///imo_problems.sqlite", headless=True):
+    def __init__(self, database_url="sqlite:///imo.sqlite", headless=True):
         """Initialize IMO-specific scraper"""
         # Database setup
         self.engine = create_engine(database_url)
@@ -348,7 +348,7 @@ class IMOScraper:
 def scrape_year_range():
     """Scrape a specific range of years"""
     scraper = IMOScraper(
-        database_url="sqlite:///imo_problems.sqlite",
+        database_url="sqlite:///imo.sqlite",
         headless=True
     )
     

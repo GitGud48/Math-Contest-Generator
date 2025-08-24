@@ -1,37 +1,41 @@
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
 from sqlalchemy.sql.expression import func
 import os
+import sys
 import glob
 
-# Import AoPS models (from your aops_models.py)
+# Add parent directory to path for imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# Import AoPS models
 try:
     from backend.aops.aops_models import Problem, ContestYear, Contest
     AOPS_SCHEMA_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     AOPS_SCHEMA_AVAILABLE = False
-    print("⚠️  Warning: aops_models.py not found or not importable")
+    print(f"⚠️  Warning: Could not import aops_models: {e}")
 
-# Import Putnam models (if you still want support for original Putnam database)
+# Import Putnam models  
 try:
     from backend.putnam.putnam_models import Problem as PutnamProblem, Year
     PUTNAM_SCHEMA_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     PUTNAM_SCHEMA_AVAILABLE = False
-    print("⚠️  Warning: putnam_models.py not found or not importable")
+    print(f"⚠️  Warning: Could not import putnam_models: {e}")
 
-# Import MIT models (if you still want support for original MIT database)
+# Import MIT models
 try:
-    from backend.mit.mit_models import Problem as PutnamProblem, Year
+    from backend.mit.mit_models import Problem as MITProblem, Year as MITYear
     MIT_SCHEMA_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     MIT_SCHEMA_AVAILABLE = False
-    print("⚠️  Warning: mit_models.py not found or not importable")
+    print(f"⚠️  Warning: Could not import mit_models: {e}")
 
 app = Flask(__name__, static_folder=".", static_url_path="")
-CORS(app)
+CORS(app, supports_credentials=True)
 
 class DatabaseManager:
     def __init__(self):
@@ -40,38 +44,53 @@ class DatabaseManager:
         self._discover_databases()
     
     def _discover_databases(self):
-        """Discover all available database files"""
+        """Discover all available database files - FIXED FOR FRONTEND DIRECTORY"""
+        # Since we're in frontend/, go up one level to find databases/
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        databases_dir = os.path.join(base_dir, 'databases')
+        
+        print(f"🔍 Looking for databases in: {databases_dir}")
+        
+        # Database file patterns - adjusted for frontend directory location
         db_patterns = [
-            "./databases/*.db",
-            "./databases/*.sqlite", 
-            "./databases/*.sqlite3",
-            "./putnam.sqlite",
+            "../databases/*.sqlite",
+            "../databases/*.db", 
+            "../databases/*.sqlite3",
+            # Also check root directory
+            "../*.sqlite",
+            "../*.db"
         ]
         
         db_files = []
         for pattern in db_patterns:
-            db_files.extend(glob.glob(pattern))
+            matches = glob.glob(pattern)
+            db_files.extend(matches)
         
+        # Remove duplicates
         unique_dbs = list(set(db_files))
+        
+        print(f"📋 Found database files: {unique_dbs}")
         
         for db_path in unique_dbs:
             if os.path.exists(db_path):
                 try:
                     db_name = os.path.basename(db_path).split('.')[0]
-                    engine = create_engine(f"sqlite:///{db_path}")
+                    # Convert relative path to absolute
+                    abs_db_path = os.path.abspath(db_path)
+                    engine = create_engine(f"sqlite:///{abs_db_path}")
                     schema_type = self._detect_schema_type(engine)
                     
                     if schema_type:
                         self.databases[db_name] = {
                             'engine': engine,
-                            'path': db_path,
+                            'path': abs_db_path,
                             'schema': schema_type,
                             'display_name': self._get_display_name(db_name, schema_type)
                         }
                         
-                        Session = sessionmaker(bind=engine)
-                        self.sessions[db_name] = Session
-                        print(f"✅ Connected: {db_name} ({schema_type})")
+                        SessionLocal = scoped_session(sessionmaker(bind=engine))
+                        self.sessions[db_name] = SessionLocal
+                        print(f"✅ Connected: {db_name} ({schema_type}) at {abs_db_path}")
                 
                 except Exception as e:
                     print(f"❌ Failed to connect to {db_path}: {e}")
@@ -105,65 +124,78 @@ class DatabaseManager:
         elif schema_type == 'aops':
             if 'imo' in db_name.lower():
                 return "International Mathematical Olympiad (IMO)"
+            elif 'mit' in db_name.lower():
+                return "MIT Mathematics Competition"
             else:
                 return "Art of Problem Solving (Multiple Contests)"
         else:
             return db_name.replace('_', ' ').title()
     
     def get_problems_from_db(self, db_name, limit=20):
-        """Get random problems from specific database"""
+        """Get random problems from specific database - FIXED VERSION"""
         if db_name not in self.sessions:
             return []
         
         try:
-            Session = self.sessions[db_name]
-            session = Session()
+            SessionLocal = self.sessions[db_name]
+            session = SessionLocal()
             schema_type = self.databases[db_name]['schema']
             problems = []
             
             if schema_type == 'aops' and AOPS_SCHEMA_AVAILABLE:
-                # Query AoPS database structure (IMO database)
+                # FIXED: Use eager loading to prevent detached session issues
                 db_problems = (session.query(Problem)
-                             .join(ContestYear)
-                             .join(Contest)
+                             .options(
+                                 joinedload(Problem.contest_year)
+                                 .joinedload(ContestYear.contest)
+                             )
                              .order_by(func.random())
                              .limit(limit)
                              .all())
                 
+                # Process all data while session is active
                 for p in db_problems:
-                    problems.append({
-                        "label": p.problem_label or f"Problem {p.problem_number}",
-                        "statement": p.statement or "Statement not available",
-                        "solution": p.solution or "Solution not available",
-                        "year": p.contest_year.year,
-                        "contest": p.contest_year.contest.full_name or p.contest_year.contest.name,
-                        "subject": p.subject_area or "Unknown",
-                        "source": db_name,
-                        "problem_url": p.aops_problem_url
-                    })
+                    try:
+                        problems.append({
+                            "label": p.problem_label or f"Problem {p.problem_number}",
+                            "statement": p.statement or "Statement not available",
+                            "solution": p.solution or "Solution not available",
+                            "year": p.contest_year.year if p.contest_year else "Unknown",
+                            "contest": (p.contest_year.contest.full_name or p.contest_year.contest.name) if (p.contest_year and p.contest_year.contest) else "Unknown Contest",
+                            "subject": p.subject_area or "Unknown",
+                            "source": db_name,
+                            "problem_url": p.aops_problem_url
+                        })
+                    except Exception as e:
+                        print(f"Error processing problem: {e}")
+                        continue
             
             elif schema_type == 'putnam' and PUTNAM_SCHEMA_AVAILABLE:
-                # Query original Putnam database structure
+                # Handle Putnam schema
                 db_problems = (session.query(PutnamProblem)
-                             .join(Year)
+                             .options(joinedload(PutnamProblem.year))
                              .order_by(func.random())
                              .limit(limit)
                              .all())
                 
                 for p in db_problems:
-                    problems.append({
-                        "label": p.label or f"{p.part}{p.number}",
-                        "statement": p.statement or "Statement not available",
-                        "solution": p.solution or "Solution not available",
-                        "year": p.year.year,
-                        "contest": "Putnam Competition",
-                        "subject": "Mixed",
-                        "source": db_name,
-                        "problem_url": p.pdf_url
-                    })
+                    try:
+                        problems.append({
+                            "label": p.label or f"{p.part}{p.number}",
+                            "statement": p.statement or "Statement not available",
+                            "solution": p.solution or "Solution not available",
+                            "year": p.year.year if p.year else "Unknown",
+                            "contest": "Putnam Competition",
+                            "subject": "Mixed",
+                            "source": db_name,
+                            "problem_url": getattr(p, 'pdf_url', None)
+                        })
+                    except Exception as e:
+                        print(f"Error processing Putnam problem: {e}")
+                        continue
             
             elif schema_type == 'generic':
-                # Handle generic database structure
+                # Handle generic problems table
                 with self.databases[db_name]['engine'].connect() as conn:
                     result = conn.execute(text(f"""
                         SELECT * FROM problems 
@@ -175,23 +207,29 @@ class DatabaseManager:
                     rows = result.fetchall()
                     
                     for row in rows:
-                        row_dict = dict(zip(columns, row))
-                        problems.append({
-                            "label": row_dict.get('label', row_dict.get('problem_label', f"Problem {row_dict.get('id', '?')}")),
-                            "statement": row_dict.get('statement', "Statement not available"),
-                            "solution": row_dict.get('solution', "Solution not available"),
-                            "year": row_dict.get('year', 'Unknown'),
-                            "contest": db_name.replace('_', ' ').title(),
-                            "subject": row_dict.get('subject_area', 'Unknown'),
-                            "source": db_name,
-                            "problem_url": row_dict.get('aops_problem_url', row_dict.get('pdf_url'))
-                        })
+                        try:
+                            row_dict = dict(zip(columns, row))
+                            problems.append({
+                                "label": row_dict.get('label', row_dict.get('problem_label', f"Problem {row_dict.get('id', '?')}")),
+                                "statement": row_dict.get('statement', "Statement not available"),
+                                "solution": row_dict.get('solution', "Solution not available"),
+                                "year": row_dict.get('year', 'Unknown'),
+                                "contest": db_name.replace('_', ' ').title(),
+                                "subject": row_dict.get('subject_area', 'Unknown'),
+                                "source": db_name,
+                                "problem_url": row_dict.get('aops_problem_url', row_dict.get('pdf_url'))
+                            })
+                        except Exception as e:
+                            print(f"Error processing generic problem: {e}")
+                            continue
             
             session.close()
             return problems
         
         except Exception as e:
-            print(f"Error fetching from {db_name}: {e}")
+            print(f"❌ Error fetching from {db_name}: {e}")
+            import traceback
+            traceback.print_exc()
             return []
     
     def get_database_list(self):
@@ -199,15 +237,15 @@ class DatabaseManager:
         db_list = []
         for db_name, db_info in self.databases.items():
             try:
-                Session = self.sessions[db_name]
-                session = Session()
+                SessionLocal = self.sessions[db_name]
+                session = SessionLocal()
                 
                 if db_info['schema'] == 'aops' and AOPS_SCHEMA_AVAILABLE:
                     problem_count = session.query(Problem).count()
                     contest_count = session.query(Contest).count()
                 elif db_info['schema'] == 'putnam' and PUTNAM_SCHEMA_AVAILABLE:
                     problem_count = session.query(PutnamProblem).count()
-                    contest_count = 1  # Only Putnam
+                    contest_count = 1
                 else:
                     with db_info['engine'].connect() as conn:
                         result = conn.execute(text("SELECT COUNT(*) FROM problems"))
@@ -245,19 +283,18 @@ def serve_index():
 def get_problems():
     """Get problems from specified database or default"""
     try:
-        # Get database from query parameter
         db_name = request.args.get('database')
         limit = int(request.args.get('limit', 20))
         limit = min(limit, 100)
         
-        # If no database specified, prefer IMO database
+        # Default database selection
         if not db_name:
-            if 'imo_complete' in db_manager.databases:
-                db_name = 'imo_complete'
-            elif 'imo_problems' in db_manager.databases:
-                db_name = 'imo_problems'
-            elif 'imo_test' in db_manager.databases:
-                db_name = 'imo_test'
+            if 'imo' in db_manager.databases:
+                db_name = 'imo'
+            elif 'putnam' in db_manager.databases:
+                db_name = 'putnam'  
+            elif 'mit' in db_manager.databases:
+                db_name = 'mit'
             elif db_manager.databases:
                 db_name = list(db_manager.databases.keys())[0]
             else:
@@ -284,6 +321,8 @@ def get_problems():
     
     except Exception as e:
         print(f"Error fetching problems: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "problems": [],
             "error": str(e)
@@ -307,21 +346,26 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "databases_connected": len(db_manager.databases),
+        "current_directory": os.getcwd(),
         "databases": {
             db_name: {
                 "name": db_data["display_name"],
-                "schema": db_data["schema"]
+                "schema": db_data["schema"],
+                "path": db_data["path"]
             } 
             for db_name, db_data in db_manager.databases.items()
         },
         "schema_support": {
             "aops": AOPS_SCHEMA_AVAILABLE,
-            "putnam": PUTNAM_SCHEMA_AVAILABLE
+            "putnam": PUTNAM_SCHEMA_AVAILABLE,
+            "mit": MIT_SCHEMA_AVAILABLE
         }
     })
 
 if __name__ == "__main__":
-    print(f"🚀 Starting server with {len(db_manager.databases)} databases")
+    print(f"🚀 Starting server from: {os.getcwd()}")
+    print(f"🔍 Parent directory: {os.path.dirname(os.getcwd())}")
+    print(f"📊 Connected databases: {len(db_manager.databases)}")
     for db_name, db_info in db_manager.databases.items():
-        print(f"   - {db_info['display_name']} ({db_info['schema']})")
+        print(f"   - {db_info['display_name']} ({db_info['schema']}) at {db_info['path']}")
     app.run(debug=True, host='0.0.0.0', port=3000)
