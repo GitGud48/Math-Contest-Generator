@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fixed IMO Problems Scraper - Uses correct URL structure and HTML parsing
+Simplified IMO Scraper - Saves raw HTML content for frontend processing
 """
 
 import requests
@@ -14,9 +14,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from aops_models import Base, Contest, ContestYear, Problem
 
-class IMOScraper:
+class RawContentIMOScraper:
     def __init__(self, database_url="sqlite:///imo.sqlite", headless=True):
-        """Initialize IMO-specific scraper"""
+        """Initialize IMO scraper that preserves raw content"""
         # Database setup
         self.engine = create_engine(database_url)
         Base.metadata.create_all(self.engine)
@@ -46,7 +46,7 @@ class IMOScraper:
         # URLs
         self.base_url = "https://artofproblemsolving.com/wiki/index.php/"
         self.main_page = "https://artofproblemsolving.com/wiki/index.php/IMO_Problems_and_Solutions"
-        
+    
     def create_imo_contest(self):
         """Create or get the IMO contest in database"""
         contest = self.session.query(Contest).filter_by(name="IMO").first()
@@ -68,18 +68,17 @@ class IMOScraper:
     def generate_problem_urls(self, year):
         """Generate the URLs for individual IMO problems for a given year"""
         problem_urls = []
-        # IMO typically has 6 problems
         for problem_num in range(1, 7):
             url = f"https://artofproblemsolving.com/wiki/index.php/{year}_IMO_Problems/Problem_{problem_num}"
             problem_urls.append((problem_num, url))
         return problem_urls
     
     def scrape_individual_problem(self, contest_year, problem_number, problem_url):
-        """Scrape an individual problem page using the exact HTML structure"""
+        """Scrape individual problem preserving raw HTML"""
         try:
             self.logger.info(f"   🔍 Scraping Problem {problem_number}: {problem_url}")
             
-            # Use requests first to check if page exists
+            # Check if page exists
             response = requests.get(problem_url)
             if response.status_code != 200:
                 self.logger.warning(f"   ⚠️  Problem {problem_number} page not found (404)")
@@ -91,11 +90,11 @@ class IMOScraper:
             
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             
-            # Find the Problem section using exact HTML structure
-            problem_statement = self._extract_problem_statement(soup)
-            solution = self._extract_solutions(soup)
+            # Extract raw HTML content
+            problem_statement_html = self._extract_raw_problem_statement(soup)
+            solution_html = self._extract_raw_solutions(soup)
             
-            if not problem_statement or len(problem_statement.strip()) < 20:
+            if not problem_statement_html or len(problem_statement_html.strip()) < 20:
                 self.logger.warning(f"   ⚠️  No substantial problem statement found for Problem {problem_number}")
                 return False
             
@@ -109,29 +108,29 @@ class IMOScraper:
                 self.logger.info(f"   ✅ Problem {problem_number} already exists, skipping")
                 return False
             
-            # Create and save the problem
+            # Create and save the problem with raw HTML
             problem = Problem(
                 contest_year_id=contest_year.id,
                 problem_number=problem_number,
                 problem_label=f"Problem {problem_number}",
-                statement=problem_statement.strip(),
-                statement_format='html',
-                solution=solution.strip() if solution else "Solutions not available",
+                statement=problem_statement_html,
+                statement_format='html',  # Mark as HTML format
+                solution=solution_html if solution_html else "Solutions not available",
                 solution_format='html',
                 aops_problem_url=problem_url,
-                subject_area=self._guess_subject_area(problem_statement)
+                subject_area=self._guess_subject_area(problem_statement_html)
             )
             
             self.session.add(problem)
-            self.logger.info(f"   ➕ Added Problem {problem_number}: {problem_statement[:60]}...")
+            self.logger.info(f"   ➕ Added Problem {problem_number}")
             return True
             
         except Exception as e:
             self.logger.error(f"   ❌ Error scraping Problem {problem_number}: {e}")
             return False
     
-    def _extract_problem_statement(self, soup):
-        """Extract problem statement using the exact HTML structure"""
+    def _extract_raw_problem_statement(self, soup):
+        """Extract raw HTML problem statement"""
         try:
             # Find h2 with span id="Problem" class="mw-headline"
             problem_header = None
@@ -142,36 +141,31 @@ class IMOScraper:
                     break
             
             if not problem_header:
-                self.logger.warning("   No problem header found with correct structure")
                 return ""
             
-            # Extract content after the problem header until the next h2
-            content_parts = []
+            # Collect all content until next h2
+            content_html = []
             current = problem_header.find_next_sibling()
             
             while current:
-                # Stop if we hit another h2 (like Solutions)
                 if current.name == 'h2':
                     break
                 
-                # Extract text content
-                if hasattr(current, 'get_text'):
-                    text = current.get_text().strip()
-                    if text and len(text) > 5:
-                        content_parts.append(text)
+                if current.name in ['p', 'div'] and str(current).strip():
+                    content_html.append(str(current))
                 
                 current = current.find_next_sibling()
             
-            return ' '.join(content_parts)
+            return ''.join(content_html)
             
         except Exception as e:
             self.logger.error(f"Error extracting problem statement: {e}")
             return ""
     
-    def _extract_solutions(self, soup):
-        """Extract all solutions from the Solutions section"""
+    def _extract_raw_solutions(self, soup):
+        """Extract raw HTML solutions"""
         try:
-            # Find h2 with span id="Solutions" class="mw-headline"
+            # Find solutions header
             solutions_header = None
             for h2 in soup.find_all('h2'):
                 span = h2.find('span', {'class': 'mw-headline'})
@@ -182,48 +176,45 @@ class IMOScraper:
             if not solutions_header:
                 return ""
             
-            # Extract content after the solutions header
-            content_parts = []
+            # Collect all content until next major section
+            content_html = []
             current = solutions_header.find_next_sibling()
             
             while current:
-                # Stop if we hit "See Also" or another major section
                 if current.name == 'h2':
                     span = current.find('span', {'class': 'mw-headline'})
                     if span and any(stop_word in span.get_text().lower() 
                                   for stop_word in ['see also', 'external', 'references']):
                         break
                 
-                # Extract text content
-                if hasattr(current, 'get_text'):
-                    text = current.get_text().strip()
-                    if text and len(text) > 10:
-                        content_parts.append(text)
+                if current.name in ['p', 'div', 'h3'] and str(current).strip():
+                    content_html.append(str(current))
                 
                 current = current.find_next_sibling()
             
-            return ' '.join(content_parts)
+            return ''.join(content_html)
             
         except Exception as e:
             self.logger.error(f"Error extracting solutions: {e}")
             return ""
     
-    def _guess_subject_area(self, text):
-        """Guess subject area from problem text"""
-        text_lower = text.lower()
+    def _guess_subject_area(self, html_content):
+        """Guess subject area from HTML content"""
+        # Convert to text for analysis
+        soup = BeautifulSoup(html_content, 'html.parser')
+        text = soup.get_text().lower()
         
-        if any(word in text_lower for word in 
-               ['triangle', 'circle', 'angle', 'polygon', 'line', 'point', 'perpendicular', 
-                'parallel', 'inscribed', 'circumscribed', 'tangent']):
+        if any(word in text for word in 
+               ['triangle', 'circle', 'angle', 'polygon', 'line', 'point']):
             return 'Geometry'
-        elif any(word in text_lower for word in 
-                 ['prime', 'integer', 'divisible', 'modular', 'congruent', 'gcd', 'lcm']):
+        elif any(word in text for word in 
+                 ['prime', 'integer', 'divisible', 'modular', 'congruent']):
             return 'Number Theory'
-        elif any(word in text_lower for word in 
-                 ['polynomial', 'equation', 'function', 'inequality', 'variable']):
+        elif any(word in text for word in 
+                 ['polynomial', 'equation', 'function', 'inequality']):
             return 'Algebra'
-        elif any(word in text_lower for word in 
-                 ['permutation', 'combination', 'ways', 'arrangements', 'choose']):
+        elif any(word in text for word in 
+                 ['permutation', 'combination', 'ways', 'arrangements']):
             return 'Combinatorics'
         else:
             return 'Mixed'
@@ -269,71 +260,6 @@ class IMOScraper:
             self.logger.error(f"❌ Error scraping IMO {year}: {e}")
             return 0
     
-    def run_test_scrape(self, test_years=None):
-        """Run a test scrape on specific years"""
-        if test_years is None:
-            test_years = [2023, 2022, 2021]  # Recent years for testing
-        
-        self.logger.info(f"🧪 Starting test scrape for years: {test_years}")
-        
-        try:
-            contest = self.create_imo_contest()
-            total_problems = 0
-            
-            for year in test_years:
-                self.logger.info(f"\n📊 Processing: IMO {year}")
-                
-                try:
-                    problems_added = self.scrape_year_problems(contest, year)
-                    total_problems += problems_added
-                    
-                    self.logger.info(f"💾 CHECKPOINT: {total_problems} problems total")
-                    time.sleep(2)
-                    
-                except Exception as e:
-                    self.logger.error(f"❌ Failed processing IMO {year}: {e}")
-                    continue
-            
-            self.logger.info(f"\n🎉 Test scraping complete! Total problems: {total_problems}")
-            
-        except Exception as e:
-            self.logger.error(f"💥 Fatal error: {e}")
-        
-        finally:
-            self.cleanup()
-    
-    def run_full_scrape(self, start_year=1959, end_year=2024):
-        """Run the complete IMO scraping process"""
-        self.logger.info(f"🚀 Starting full IMO scraping from {start_year} to {end_year}...")
-        
-        try:
-            contest = self.create_imo_contest()
-            total_problems = 0
-            years_processed = 0
-            
-            for year in range(start_year, end_year + 1):
-                self.logger.info(f"\n📊 Processing: IMO {year} ({year - start_year + 1}/{end_year - start_year + 1})")
-                
-                try:
-                    problems_added = self.scrape_year_problems(contest, year)
-                    total_problems += problems_added
-                    years_processed += 1
-                    
-                    self.logger.info(f"💾 CHECKPOINT: {total_problems} problems total, {years_processed} years processed")
-                    time.sleep(2)  # Rate limiting
-                    
-                except Exception as e:
-                    self.logger.error(f"❌ Failed processing IMO {year}: {e}")
-                    continue
-            
-            self.logger.info(f"\n🎉 IMO scraping complete! Total: {total_problems} problems from {years_processed} years")
-            
-        except Exception as e:
-            self.logger.error(f"💥 Fatal error: {e}")
-        
-        finally:
-            self.cleanup()
-    
     def cleanup(self):
         """Clean up resources"""
         try:
@@ -344,23 +270,36 @@ class IMOScraper:
         except Exception as e:
             self.logger.error(f"Cleanup error: {e}")
 
-# Scrape a range of years
-def scrape_year_range():
-    """Scrape a specific range of years"""
-    scraper = IMOScraper(
+# Usage - Modified to loop through all years
+if __name__ == "__main__":
+    scraper = RawContentIMOScraper(
         database_url="sqlite:///imo.sqlite",
         headless=True
     )
     
     try:
-        # Scrape from 1959 to 2024 (all IMO years)
-        scraper.run_full_scrape(start_year=1959, end_year=2024)
+        contest = scraper.create_imo_contest()
+        
+        # Loop through all IMO years from 1959 to 2024
+        total_problems = 0
+        for year in range(1959, 2025):  # 1959 to 2024 inclusive
+            print(f"\n📊 Processing IMO {year} ({year - 1958}/{2024 - 1958})")
+            
+            try:
+                problems_added = scraper.scrape_year_problems(contest, year)
+                total_problems += problems_added
+                print(f"💾 CHECKPOINT: {total_problems} total problems scraped")
+                
+                # Small delay between years to be respectful
+                time.sleep(3)
+                
+            except Exception as e:
+                print(f"❌ Failed processing IMO {year}: {e}")
+                continue
+        
+        print(f"\n🎉 Complete! Scraped {total_problems} problems from {2024 - 1958} years")
+        
     except KeyboardInterrupt:
         print("\n⏸️  Scraping interrupted by user")
-    except Exception as e:
-        print(f"❌ Error: {e}")
     finally:
         scraper.cleanup()
-
-if __name__ == "__main__":
-    scrape_year_range()
