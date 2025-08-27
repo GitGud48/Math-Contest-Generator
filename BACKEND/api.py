@@ -368,4 +368,4 @@ if __name__ == "__main__":
     print(f"📊 Connected databases: {len(db_manager.databases)}")
     for db_name, db_info in db_manager.databases.items():
         print(f"   - {db_info['display_name']} ({db_info['schema']}) at {db_info['path']}")
-    app.run(debug=True, host='0.0.0.0', port=3000)
+    app.run(debug=True, host='0.0.0.0', port=4000)
