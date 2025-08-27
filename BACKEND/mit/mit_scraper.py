@@ -38,15 +38,6 @@ for section_name, content, _ in matches:
         statement = p.strip()
         prob = Problem(category_id=category.id, statement=statement)
         session.add(prob)
-'''
-    for p in problems:
-        # Clean whitespace
-        statement = p.strip()
-        # Check if this problem already exists in the same category
-        exists = session.query(Problem).filter_by(category_id=category.id, statement=statement).first()
-    if not exists:
-        prob = Problem(category_id=category.id, statement=statement)
-        session.add(prob)
-'''
+
 session.commit()
 print("✅ All problems inserted!")
