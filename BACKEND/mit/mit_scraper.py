@@ -1,5 +1,5 @@
 import re
-from BACKEND.mit.mit_models import Base, Category, Problem
+from mit_models import Base, Category, Problem
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -14,7 +14,7 @@ for table in reversed(Base.metadata.sorted_tables):
 session.commit()
 
 # --- Load TeX file ---
-with open("mit_problems.tex", "r", encoding="utf-8") as f:
+with open("BACKEND/mit/mit_problems.tex", "r", encoding="utf-8") as f:
     tex = f.read()
 
 # --- Split into categories ---
@@ -38,15 +38,6 @@ for section_name, content, _ in matches:
         statement = p.strip()
         prob = Problem(category_id=category.id, statement=statement)
         session.add(prob)
-'''
-    for p in problems:
-        # Clean whitespace
-        statement = p.strip()
-        # Check if this problem already exists in the same category
-        exists = session.query(Problem).filter_by(category_id=category.id, statement=statement).first()
-    if not exists:
-        prob = Problem(category_id=category.id, statement=statement)
-        session.add(prob)
-'''
+
 session.commit()
 print("✅ All problems inserted!")

@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from BACKEND.mit.mit_models import Category, Problem
+from mit_models import Category, Problem
 
 
 DB_PATH = "mit.sqlite"

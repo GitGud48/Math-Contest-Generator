@@ -3,3 +3,7 @@ tex_files/
 putnam.sqlite
 __pycache__/
 .env
+databases/
+debug.*
+databases/*.sqlite
+node_modules/
