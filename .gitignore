@@ -7,8 +7,6 @@ databases/
 debug.*
 databases/*.sqlite
 node_modules/
-
-databases/
-debug.*
-databases/*.sqlite
 frontend/.next/
+.wrangler/
+cache/
