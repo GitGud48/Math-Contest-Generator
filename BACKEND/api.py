@@ -20,7 +20,7 @@ except ImportError as e:
 
 # Import Putnam models  
 try:
-    from backend.putnam.putnam_models import Problem as PutnamProblem, Year
+    from backend.putnam.putnam_models import Problem as PutnamProblem
     PUTNAM_SCHEMA_AVAILABLE = True
 except ImportError as e:
     PUTNAM_SCHEMA_AVAILABLE = False
@@ -28,14 +28,15 @@ except ImportError as e:
 
 # Import MIT models
 try:
-    from backend.mit.mit_models import Problem as MITProblem, Year as MITYear
+    from backend.mit.mit_models import Problem as MITProblem
     MIT_SCHEMA_AVAILABLE = True
 except ImportError as e:
     MIT_SCHEMA_AVAILABLE = False
     print(f"⚠️  Warning: Could not import mit_models: {e}")
 
 app = Flask(__name__, static_folder=".", static_url_path="")
-CORS(app, supports_credentials=True)
+FRONTEND_ORIGIN = "https://my-app.math-grinder.workers.dev"
+CORS(app, resources = FRONTEND_ORIGIN, supports_credentials=True)
 
 class DatabaseManager:
     def __init__(self):
@@ -44,7 +45,7 @@ class DatabaseManager:
         self._discover_databases()
     
     def _discover_databases(self):
-        """Discover all available database files - FIXED FOR FRONTEND DIRECTORY"""
+        """Discover all available database files"""
         # Since we're in frontend/, go up one level to find databases/
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         databases_dir = os.path.join(base_dir, 'databases')
@@ -132,7 +133,7 @@ class DatabaseManager:
             return db_name.replace('_', ' ').title()
     
     def get_problems_from_db(self, db_name, limit=20):
-        """Get random problems from specific database - FIXED VERSION"""
+        """Get random problems from specific database"""
         if db_name not in self.sessions:
             return []
         

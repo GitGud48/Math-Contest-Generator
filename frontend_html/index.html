@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Math Contest Problems</title>
+  <!-- MathJax v3 Configuration -->
+  <script>
+  MathJax = {
+    tex: {
+      inlineMath: [['$','$'], ['\\(','\\)']],
+      displayMath: [['$$','$$'], ['\\[','\\]']]
+    },
+    startup: {
+      ready: () => {
+        MathJax.startup.defaultReady();
+        // Handle AoPS LaTeX images after MathJax is ready
+        processAoPSLatexImages();
+      }
+    }
+  };
+  </script>
+  <script id="MathJax-script" async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <style>
+    /* Your existing styles */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      border-bottom: 3px solid #3498db;
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .statement, .solution {
+      background: #f8f9fa;
+      border-left: 4px solid #007bff;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 0 5px 5px 0;
+      overflow-x: auto;
+    }
+    
+    .solution {
+      border-left-color: #28a745;
+      background: #f8fff8;
+    }
+    
+    /* Style for AoPS LaTeX images */
+    .statement img.latex,
+    .solution img.latex {
+      vertical-align: middle;
+      margin: 0 2px;
+      border: none;
+      background: transparent;
+    }
+    
+    /* Fallback for broken LaTeX images */
+    .latex-fallback {
+      background: #ffe6e6;
+      border: 1px solid #ffcccc;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+    
+    /* Rest of your existing styles... */
+    details summary {
+      cursor: pointer;
+      font-weight: bold;
+      margin: 10px 0;
+      padding: 10px;
+      background: #e9ecef;
+      border-radius: 5px;
+      transition: background-color 0.3s;
+    }
+    
+    details summary:hover {
+      background: #dee2e6;
+    }
+    
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 30px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+    }
+    
+    .btn {
+      background: linear-gradient(135deg, #007bff, #0056b3);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.3s;
+      box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0,123,255,0.4);
+    }
+    
+    .btn:disabled {
+      background: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .database-selector, .category-selector {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px;
+      background: white;
+      border-radius: 8px;
+      border: 2px solid #007bff;
+      box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+    }
+    
+    .category-selector {
+      border-color: #28a745;
+      box-shadow: 0 2px 4px rgba(40,167,69,0.1);
+    }
+    
+    .database-selector label, .category-selector label {
+      font-weight: 600;
+      color: #2c3e50;
+      font-size: 16px;
+    }
+    
+    .database-selector select, .category-selector select {
+      padding: 10px 15px;
+      border: 2px solid #dee2e6;
+      border-radius: 6px;
+      font-size: 16px;
+      background: white;
+      cursor: pointer;
+      min-width: 200px;
+      transition: border-color 0.3s;
+    }
+    
+    .database-selector select:focus, .category-selector select:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    }
+    
+    .database-info {
+      background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+      border: 2px solid #2196f3;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+      text-align: center;
+      font-weight: 500;
+    }
+    
+    .problem-item {
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: box-shadow 0.3s;
+    }
+    
+    .problem-item:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .problem-item.hidden {
+      display: none;
+    }
+    
+    .problem-header {
+      background: linear-gradient(135deg, #495057, #343a40);
+      color: white;
+      padding: 15px;
+      border-radius: 10px 10px 0 0;
+      font-weight: 600;
+    }
+    
+    .problem-content {
+      padding: 20px;
+    }
+    
+    .random-problem {
+      border: 3px solid #007bff;
+      box-shadow: 0 4px 20px rgba(0,123,255,0.2);
+    }
+    
+    .problem-count {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #6c757d;
+      background: #f8f9fa;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      font-size: 18px;
+      color: #6c757d;
+    }
+    
+    .error {
+      background: #fee;
+      border: 2px solid #dc3545;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 20px 0;
+      color: #721c24;
+      text-align: center;
+    }
+    
+    /* Category badges in problem headers */
+    .category-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .category-badge.geometry {
+      background: rgba(52, 152, 219, 0.8);
+    }
+    
+    .category-badge.algebra {
+      background: rgba(231, 76, 60, 0.8);
+    }
+    
+    .category-badge.number-theory {
+      background: rgba(155, 89, 182, 0.8);
+    }
+    
+    .category-badge.combinatorics {
+      background: rgba(241, 196, 15, 0.8);
+    }
+    
+    .category-badge.mixed {
+      background: rgba(149, 165, 166, 0.8);
+    }
+    
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      
+      .database-selector, .category-selector {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .database-selector select, .category-selector select {
+        min-width: auto;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧮 Math Contest Problems</h1>
+    
+    <div class="controls">
+      <div class="database-selector">
+        <label for="databaseSelect">📚 Choose Database:</label>
+        <select id="databaseSelect">
+          <option value="">🔄 Loading databases...</option>
+        </select>
+      </div>
+      
+      <div class="category-selector">
+        <label for="categorySelect">🔬 Filter by Subject:</label>
+        <select id="categorySelect">
+          <option value="all">🌟 All Subjects</option>
+          <option value="Geometry">📐 Geometry</option>
+          <option value="Algebra">🔢 Algebra</option>
+          <option value="Number Theory">🔢 Number Theory</option>
+          <option value="Combinatorics">🎲 Combinatorics</option>
+          <option value="Mixed">🌈 Mixed</option>
+          <option value="Unknown">❓ Unknown</option>
+        </select>
+      </div>
+      
+      <button id="loadAllBtn" class="btn">📖 Load All Problems</button>
+      <button id="randomBtn" class="btn" disabled>🎲 Random Problem</button>
+      <button id="clearBtn" class="btn">🗑️ Clear</button>
+    </div>
+    
+    <div id="databaseInfo" class="database-info" style="display: none;"></div>
+    <div id="categoryInfo" class="problem-count" style="display: none;"></div>
+    
+    <div id="problems">
+      <div class="loading">
+        Select a database and click "Load All Problems" to start exploring! 🚀
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allProblems = [];
+    let availableDatabases = [];
+    let currentDatabase = '';
+    let currentCategory = 'all';
+
+    // Expected databases configuration
+    const expectedDatabases = {
+      'mit': {
+        name: '🏛️ MIT Problems',
+        description: 'Massachusetts Institute of Technology math problems',
+        icon: '🏛️'
+      },
+      'putnam': {
+        name: '🏆 Putnam Competition',
+        description: 'William Lowell Putnam Mathematical Competition',
+        icon: '🏆'
+      },
+      'imo': {
+        name: '🌍 International Mathematical Olympiad',
+        description: 'International Mathematical Olympiad problems',
+        icon: '🌍'
+      }
+    };
+
+    // Category configuration
+    const categoryConfig = {
+      'Geometry': { icon: '📐', color: '#3498db' },
+      'Algebra': { icon: '🔢', color: '#e74c3c' },
+      'Number Theory': { icon: '🔢', color: '#9b59b6' },
+      'Combinatorics': { icon: '🎲', color: '#f1c40f' },
+      'Mixed': { icon: '🌈', color: '#95a5a6' },
+      'Unknown': { icon: '❓', color: '#7f8c8d' }
+    };
+
+    // Process AoPS LaTeX images
+    function processAoPSLatexImages() {
+      const latexImages = document.querySelectorAll('img.latex');
+      
+      latexImages.forEach(img => {
+        img.onerror = function() {
+          const fallback = document.createElement('span');
+          fallback.className = 'latex-fallback';
+          fallback.textContent = img.alt || '[MATH]';
+          fallback.title = 'LaTeX image could not be loaded: ' + (img.alt || img.src);
+          img.parentNode.replaceChild(fallback, img);
+        };
+        
+        if (!img.complete && img.naturalHeight === 0) {
+          img.src = img.src;
+        }
+      });
+    }
+
+    // Enhanced format function that preserves HTML
+    function formatContent(content) {
+      if (!content) return '';
+      
+      let formatted = content;
+      
+      formatted = formatted
+        .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+        .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
+        .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>');
+
+      return formatted;
+    }
+
+    function getCategoryBadge(subject) {
+      if (!subject || subject === 'Unknown') return '';
+      
+      const config = categoryConfig[subject];
+      if (!config) return '';
+      
+      const className = subject.toLowerCase().replace(/\s+/g, '-');
+      return `<span class="category-badge ${className}">${config.icon} ${subject}</span>`;
+    }
+
+    function renderProblem(problem, isRandom = false) {
+      const div = document.createElement('div');
+      div.className = `problem-item ${isRandom ? 'random-problem' : ''}`;
+      div.setAttribute('data-category', problem.subject || 'Unknown');
+      
+      const formattedStatement = formatContent(problem.statement);
+      const formattedSolution = formatContent(problem.solution);
+      
+      const dbConfig = expectedDatabases[problem.source] || 
+                      expectedDatabases[currentDatabase] || 
+                      { icon: '📚', name: problem.contest || 'Unknown Contest' };
+      
+      const categoryBadge = getCategoryBadge(problem.subject);
+      
+      div.innerHTML = `
+        <div class="problem-header">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>${dbConfig.icon} ${problem.contest || dbConfig.name} ${problem.year} - ${problem.label}</span>
+            <span>${categoryBadge}</span>
+          </div>
+        </div>
+        <div class="problem-content">
+          <div class="statement">${formattedStatement}</div>
+          <details>
+            <summary>💡 View Solution</summary>
+            <div class="solution">${formattedSolution}</div>
+          </details>
+        </div>
+      `;
+      
+      return div;
+    }
+
+    function filterProblemsByCategory(category) {
+      const problemItems = document.querySelectorAll('.problem-item');
+      let visibleCount = 0;
+      
+      problemItems.forEach(item => {
+        const itemCategory = item.getAttribute('data-category');
+        
+        if (category === 'all' || itemCategory === category) {
+          item.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+      
+      updateCategoryInfo(category, visibleCount);
+    }
+
+    function updateCategoryInfo(category, visibleCount) {
+      const infoDiv = document.getElementById('categoryInfo');
+      
+      if (category === 'all') {
+        infoDiv.style.display = 'none';
+      } else {
+        const config = categoryConfig[category];
+        const icon = config ? config.icon : '📚';
+        
+        infoDiv.style.display = 'block';
+        infoDiv.innerHTML = `
+          <strong>🔍 Filtered by:</strong> ${icon} ${category}
+          <br><span style="color: #666;">Showing ${visibleCount} problems</span>
+        `;
+      }
+    }
+
+    function getRandomFilteredProblem() {
+      const visibleProblems = allProblems.filter(problem => {
+        const problemCategory = problem.subject || 'Unknown';
+        return currentCategory === 'all' || problemCategory === currentCategory;
+      });
+      
+      if (visibleProblems.length === 0) {
+        return null;
+      }
+      
+      const randomIndex = Math.floor(Math.random() * visibleProblems.length);
+      return visibleProblems[randomIndex];
+    }
+
+    function typesetMath() {
+      processAoPSLatexImages();
+      
+      if (window.MathJax && MathJax.startup) {
+        MathJax.startup.promise.then(() => {
+          return MathJax.typesetPromise();
+        }).catch((err) => console.log('MathJax error:', err.message));
+      }
+    }
+
+    function loadDatabases() {
+      const select = document.getElementById('databaseSelect');
+      select.innerHTML = '<option value="">🔄 Loading databases...</option>';
+      
+      fetch('/databases')
+        .then(res => res.json())
+        .then(data => {
+          availableDatabases = data.databases || [];
+          select.innerHTML = '';
+          
+          if (availableDatabases.length === 0) {
+            select.innerHTML = '<option value="">❌ No databases available</option>';
+            showError('No databases found. Please ensure mit.sqlite, putnam.sqlite, and imo.sqlite are available.');
+            return;
+          }
+          
+          const sortedDatabases = availableDatabases.sort((a, b) => {
+            const order = ['mit', 'putnam', 'imo'];
+            return order.indexOf(a.id) - order.indexOf(b.id);
+          });
+          
+          sortedDatabases.forEach(db => {
+            const option = document.createElement('option');
+            option.value = db.id;
+            
+            const config = expectedDatabases[db.id];
+            const displayName = config ? config.name : db.name;
+            const problemCount = db.problem_count || 0;
+            
+            option.textContent = `${displayName} (${problemCount} problems)`;
+            select.appendChild(option);
+          });
+          
+          const preferredOrder = ['imo', 'putnam', 'mit'];
+          let defaultDb = null;
+          
+          for (const preferred of preferredOrder) {
+            defaultDb = availableDatabases.find(db => db.id === preferred);
+            if (defaultDb) break;
+          }
+          
+          if (!defaultDb && availableDatabases.length > 0) {
+            defaultDb = availableDatabases[0];
+          }
+          
+          if (defaultDb) {
+            select.value = defaultDb.id;
+            currentDatabase = defaultDb.id;
+            updateDatabaseInfo();
+          }
+        })
+        .catch(err => {
+          console.error('Error loading databases:', err);
+          select.innerHTML = '<option value="">❌ Error loading databases</option>';
+          showError('Failed to load databases. Please check your server connection.');
+        });
+    }
+
+    function updateDatabaseInfo() {
+      const infoDiv = document.getElementById('databaseInfo');
+      const selectedDb = availableDatabases.find(db => db.id === currentDatabase);
+      
+      if (selectedDb) {
+        const config = expectedDatabases[currentDatabase];
+        const displayName = config ? config.name : selectedDb.name;
+        const description = config ? config.description : '';
+        
+        infoDiv.style.display = 'block';
+        infoDiv.innerHTML = `
+          <div>
+            <strong>📊 Selected Database:</strong> ${displayName}
+            ${description ? `<br><small>${description}</small>` : ''}
+            <br><span style="color: #666;">📈 ${selectedDb.problem_count} problems available</span>
+          </div>
+        `;
+      } else {
+        infoDiv.style.display = 'none';
+      }
+    }
+
+    function showError(message) {
+      const container = document.getElementById('problems');
+      container.innerHTML = `<div class="error">❌ ${message}</div>`;
+    }
+
+    function loadAllProblems() {
+      const container = document.getElementById('problems');
+      const loadAllBtn = document.getElementById('loadAllBtn');
+      const randomBtn = document.getElementById('randomBtn');
+      
+      if (!currentDatabase) {
+        showError('Please select a database first');
+        return;
+      }
+      
+      loadAllBtn.disabled = true;
+      loadAllBtn.textContent = '⏳ Loading...';
+      container.innerHTML = '<div class="loading">📚 Loading problems from database...</div>';
+
+      const url = `/problems?database=${currentDatabase}&limit=50`;
+      
+      fetch(url)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
+          return res.json();
+        })
+        .then(data => {
+          allProblems = data.problems || [];
+          container.innerHTML = '';
+
+          if (allProblems.length === 0) {
+            showError('No problems found in this database.');
+            loadAllBtn.textContent = '📖 Load All Problems';
+            loadAllBtn.disabled = false;
+            return;
+          }
+
+          allProblems.forEach(problem => {
+            const div = renderProblem(problem);
+            container.appendChild(div);
+          });
+
+          // Add problem count
+          const countDiv = document.createElement('div');
+          countDiv.className = 'problem-count';
+          const dbConfig = expectedDatabases[currentDatabase];
+          countDiv.innerHTML = `
+            <strong>✅ Successfully loaded:</strong> ${allProblems.length} problems from ${data.database_name || (dbConfig ? dbConfig.name : currentDatabase)}<br>
+            <small>🎯 You can now use the subject filter and click "Random Problem" for filtered selections</small>
+          `;
+          container.appendChild(countDiv);
+
+          // Apply current category filter
+          filterProblemsByCategory(currentCategory);
+
+          randomBtn.disabled = false;
+          loadAllBtn.textContent = '🔄 Reload All Problems';
+          loadAllBtn.disabled = false;
+
+          setTimeout(typesetMath, 100);
+        })
+        .catch(err => {
+          console.error("Fetch error:", err);
+          showError(`Failed to load problems: ${err.message}`);
+          loadAllBtn.textContent = '📖 Load All Problems';
+          loadAllBtn.disabled = false;
+        });
+    }
+
+    function showRandomProblem() {
+      if (allProblems.length === 0) {
+        showError('Please load problems first by clicking "Load All Problems"!');
+        return;
+      }
+
+      const randomProblem = getRandomFilteredProblem();
+      
+      if (!randomProblem) {
+        showError(`No problems found in the ${currentCategory} category. Try selecting a different category.`);
+        return;
+      }
+
+      const container = document.getElementById('problems');
+      container.innerHTML = '';
+      
+      const div = renderProblem(randomProblem, true);
+      container.appendChild(div);
+      
+      const categoryInfo = currentCategory === 'all' ? '' : ` in ${currentCategory}`;
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'problem-count';
+      infoDiv.innerHTML = `
+        <strong>🎲 Random Problem${categoryInfo}:</strong> Selected from available problems<br>
+        <small>🔄 Click "Random Problem" again for another, or "Load All Problems" to see all</small>
+      `;
+      container.appendChild(infoDiv);
+
+      setTimeout(typesetMath, 100);
+    }
+
+    function clearProblems() {
+      const container = document.getElementById('problems');
+      const randomBtn = document.getElementById('randomBtn');
+      const categoryInfo = document.getElementById('categoryInfo');
+      
+      container.innerHTML = '<div class="loading">Select a database and click "Load All Problems" to start exploring! 🚀</div>';
+      categoryInfo.style.display = 'none';
+      allProblems = [];
+      randomBtn.disabled = true;
+    }
+
+    // Event listeners
+    document.getElementById('loadAllBtn').addEventListener('click', loadAllProblems);
+    document.getElementById('randomBtn').addEventListener('click', showRandomProblem);
+    document.getElementById('clearBtn').addEventListener('click', clearProblems);
+    
+    document.getElementById('databaseSelect').addEventListener('change', function(e) {
+      currentDatabase = e.target.value;
+      updateDatabaseInfo();
+      clearProblems();
+    });
+
+    document.getElementById('categorySelect').addEventListener('change', function(e) {
+      currentCategory = e.target.value;
+      if (allProblems.length > 0) {
+        filterProblemsByCategory(currentCategory);
+      }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'r' && e.ctrlKey) {
+        e.preventDefault();
+        showRandomProblem();
+      } else if (e.key === 'a' && e.ctrlKey) {
+        e.preventDefault();
+        loadAllProblems();
+      } else if (e.key === 'c' && e.ctrlKey && e.shiftKey) {
+        e.preventDefault();
+        clearProblems();
+      }
+    });
+
+    // Initialize on page load
+    window.addEventListener('load', function() {
+      loadDatabases();
+    });
+  </script>
+</body>
+</html>
