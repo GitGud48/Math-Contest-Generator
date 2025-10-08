@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
-}
+  // No special config needed for OpenNext Cloudflare
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

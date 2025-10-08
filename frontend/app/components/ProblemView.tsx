@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import path from 'path'
 import ProblemCard from './ProblemCard'
 import CategoryFilter from './CategoryFilter'
 
@@ -49,84 +48,29 @@ export default function ProblemView({ source }: ProblemViewProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function loadProblems() {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const Database = (await import('better-sqlite3')).default
-        const dbPath = path.join(process.cwd(), 'databases', `${source}.sqlite`)
-        const db = new Database(dbPath, { readonly: true })
-        
-        let query = ''
-        let rows: any[] = []
-        
-        // Simplified queries based on your actual database models
-        if (source === 'imo') {
-          query = `
-            SELECT 
-              p.id,
-              p.statement,
-              p.solution,
-              p.subject_area as category,
-              p.problem_number as problem_label,
-              c.name as problem_competition
-            FROM problems p
-            LEFT JOIN contest_years cy ON p.contest_year_id = cy.id
-            LEFT JOIN contests c ON cy.contest_id = c.id
-            ORDER BY cy.year DESC, p.problem_number ASC
-            LIMIT 50
-          `
-          rows = db.prepare(query).all()
-        } else if (source === 'putnam') {
-          query = `
-            SELECT 
-              p.id,
-              p.statement,
-              p.solution,
-              p.label as problem_label,
-              'Putnam' as problem_competition
-            FROM problems p
-            LEFT JOIN years y ON p.year_id = y.id
-            ORDER BY y.year DESC, p.part ASC, p.number ASC
-            LIMIT 50
-          `
-          rows = db.prepare(query).all()
-        } else if (source === 'mit') {
-          query = `
-            SELECT 
-              p.id,
-              p.statement,
-              p.solution,
-              c.category,
-              'MIT Integration Bee' as problem_competition
-            FROM problems p
-            LEFT JOIN categories c ON p.category_id = c.id
-            ORDER BY c.category ASC, p.id ASC
-            LIMIT 50
-          `
-          rows = db.prepare(query).all()
-        }
-        
-        // Convert string categories to enum values
-        const processedProblems = rows.map(row => ({
-          ...row,
-          category: row.category ? mapStringToCategory(row.category) : undefined
-        }))
-        
-        db.close()
-        setProblems(processedProblems)
-      } catch (err) {
-        console.error('Error loading problems:', err)
-        setError(`Failed to load problems from ${source}.sqlite. Make sure the database exists.`)
-        setProblems([])
-      } finally {
-        setLoading(false)
+  async function loadProblems() {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response = await fetch(`/api/problems?contest=${source}`)
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load problems')
       }
+      
+      setProblems(data.problems)
+    } catch (err: any) {
+      console.error('Error loading problems:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    loadProblems()
-  }, [source])
+  loadProblems()
+}, [source])
 
   const getCategories = (): string[] => {
     const categories = new Set<string>()

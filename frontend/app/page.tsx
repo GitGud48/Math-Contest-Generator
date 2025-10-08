@@ -1,26 +1,43 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
+'use client'
 
-const inter = Inter({ subsets: ['latin'] })
+import { useState } from 'react'
+import DatabaseSelector from './components/DatabaseSelector'
+import ProblemView from './components/ProblemView'
 
-export const metadata: Metadata = {
-  title: 'Math Problem Generator',
-  description: 'Generate and solve mathematical competition problems from IMO, Putnam, and MIT',
-}
+type DatabaseSource = 'imo' | 'putnam' | 'mit'
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function Home() {
+  const [selectedSource, setSelectedSource] = useState<DatabaseSource | null>(null)
+
+  const handleSourceSelect = (source: DatabaseSource) => {
+    setSelectedSource(source)
+  }
+
+  const handleBackToSelection = () => {
+    setSelectedSource(null)
+  }
+
   return (
-    <>
-      <div className={inter.className}>
-        <main className="main">
-          {children}
-        </main>
-      </div>
-    </>
+    <div className="container">
+      <header className="page-header">
+        <h1>Math Problem Generator</h1>
+        <p>Generate and solve mathematical competition problems from IMO, Putnam, and MIT</p>
+      </header>
+
+      {!selectedSource ? (
+        <DatabaseSelector onSourceSelect={handleSourceSelect} />
+      ) : (
+        <>
+          <button 
+            className="back-button" 
+            onClick={handleBackToSelection}
+          >
+            ← Back to Database Selection
+          </button>
+          
+          <ProblemView source={selectedSource} />
+        </>
+      )}
+    </div>
   )
 }

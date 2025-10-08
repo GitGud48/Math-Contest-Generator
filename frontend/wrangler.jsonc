@@ -1,0 +1,30 @@
+{
+  "name": "math-contest-generator",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+   "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "IMO_DB",
+      "database_name": "imo-problems",
+      "database_id": "39c81a77-8e3e-4d85-a580-f41ae1a78234",
+      "preview_database_id": "39c81a77-8e3e-4d85-a580-f41ae1a78234"
+    },
+    {
+      "binding": "PUTNAM_DB",
+      "database_name": "putnam-problems",
+      "database_id": "a80f75fa-450e-49f8-be71-0dfa6a361585",
+      "preview_database_id": "a80f75fa-450e-49f8-be71-0dfa6a361585"
+    },
+    {
+      "binding": "MIT_DB",
+      "database_name": "mit-problems",
+      "database_id": "58483f1a-95f1-446e-96a1-05e8cb906807",
+      "preview_database_id": "58483f1a-95f1-446e-96a1-05e8cb906807"
+    }
+  ]
+}

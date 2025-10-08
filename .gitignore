@@ -10,3 +10,6 @@ node_modules/
 frontend/.next/
 .wrangler/
 cache/
+*.sql
+.*
+importing_databases/
