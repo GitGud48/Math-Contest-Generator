@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import { MathJaxContext } from 'better-react-mathjax'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -9,17 +10,38 @@ export const metadata: Metadata = {
   description: 'Generate and solve mathematical competition problems from IMO, Putnam, and MIT',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }) {
+  const config = {
+    loader: { 
+      load: [
+      '[tex]/ams',        
+      '[tex]/color',      
+      '[tex]/html',       
+      '[tex]/boldsymbol', 
+      '[tex]/mathtools'   
+      ] 
+    },
+    tex: {
+      packages: { 
+        '[+]': ['ams', 'color', 'html', 'boldsymbol', 'mathtools'] 
+      },
+      inlineMath: [
+        ['$', '$'],
+        ['\\(', '\\)']
+      ],
+      displayMath: [
+        ['$$', '$$'],
+        ['\\[', '\\]']
+      ]
+    }
+  }
+
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <main className="main">
+    <html>
+      <body>
+        <MathJaxContext config={config}>
           {children}
-        </main>
+        </MathJaxContext>
       </body>
     </html>
   )

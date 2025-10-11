@@ -29,16 +29,8 @@ interface ProblemViewProps {
   source: DatabaseSource
 }
 
-const mapStringToCategory = (str: string): Category | undefined => {
-  switch (str) {
-    case 'Algebra': return Category.Algebra
-    case 'Combinatorics': return Category.Combinatorics
-    case 'Probability': return Category.Probability
-    case 'Geometry': return Category.Geometry
-    case 'Number Theory': return Category.NumberTheory
-    case 'Analysis': return Category.Analysis
-    default: return Category.Other
-  }
+const shuffleArray = <T,>(array: T[]): T[] => {
+  return [...array].sort(() => Math.random() - 0.5)
 }
 
 export default function ProblemView({ source }: ProblemViewProps) {
@@ -46,6 +38,14 @@ export default function ProblemView({ source }: ProblemViewProps) {
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [error, setError] = useState<string | null>(null)
+  const [currentProblemIndex, setCurrentProblemIndex] = useState(0)
+  const [isShuffled, setIsShuffled] = useState(false)
+
+  useEffect(() => {
+  console.log('Problems loaded:', problems.length)
+  console.log('Current index:', currentProblemIndex)
+}, [problems, currentProblemIndex])
+
 
   useEffect(() => {
   async function loadProblems() {
@@ -87,6 +87,28 @@ export default function ProblemView({ source }: ProblemViewProps) {
     return problem.category === selectedCategory
   })
 
+  const handleShuffle = () => {
+    setProblems(shuffleArray(problems))
+    setCurrentProblemIndex(0)
+    setIsShuffled(true)
+  }
+
+  const handleNextProblem = () => {
+    if (currentProblemIndex < filteredProblems.length - 1) {
+      setCurrentProblemIndex(currentProblemIndex + 1)
+    } else {
+      setCurrentProblemIndex(0) // Loop back to first problem
+    }
+  }
+
+  const handlePreviousProblem = () => {
+    if (currentProblemIndex > 0) {
+      setCurrentProblemIndex(currentProblemIndex - 1)
+    } else {
+      setCurrentProblemIndex(filteredProblems.length - 1) // Loop to last problem
+    }
+  }
+
   if (loading) {
     return (
       <div className="loading">
@@ -111,29 +133,57 @@ export default function ProblemView({ source }: ProblemViewProps) {
         source={source}
         categories={getCategories()}
         selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
+        onCategoryChange={(cat) => {
+          setSelectedCategory(cat)
+          setCurrentProblemIndex(0) // Reset to first problem when category changes
+        }}
         totalProblems={problems.length}
       />
 
-      <div className="problems-grid">
-        {filteredProblems.map((problem) => (
+      <div className="problem-controls">
+        <button className="control-btn shuffle" onClick={handleShuffle}>
+          🔀 Shuffle Problems
+        </button>
+        <div className="navigation-controls">
+          <button 
+            className="control-btn" 
+            onClick={handlePreviousProblem}
+            disabled={filteredProblems.length === 0}
+          >
+            ← Previous
+          </button>
+          <span className="problem-counter">
+            {filteredProblems.length > 0 ? currentProblemIndex + 1 : 0} / {filteredProblems.length}
+          </span>
+          <button 
+            className="control-btn" 
+            onClick={handleNextProblem}
+            disabled={filteredProblems.length === 0}
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+
+      {filteredProblems.length > 0 && (
+        <div className="problem-display">
           <ProblemCard 
-            key={`${source}-${problem.id}`}
-            problem={problem}
+            key={`${source}-${filteredProblems[currentProblemIndex].id}`}
+            problem={filteredProblems[currentProblemIndex]}
             source={source}
           />
-        ))}
-        
-        {filteredProblems.length === 0 && !loading && (
-          <div className="no-problems">
-            <p>No problems found for the selected category.</p>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+      
+      {filteredProblems.length === 0 && !loading && (
+        <div className="no-problems">
+          <p>No problems found for the selected category.</p>
+        </div>
+      )}
 
       {problems.length > 0 && (
         <div className="problem-stats">
-          <p>Showing {filteredProblems.length} of {problems.length} problems</p>
+          <p>Showing problem {currentProblemIndex + 1} of {filteredProblems.length}</p>
         </div>
       )}
     </>

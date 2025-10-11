@@ -9,6 +9,7 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "better-react-mathjax": "^2.3.0",
     "katex": "^0.16.23",
     "next": "^15.5.4",
     "react": "^19.2.0",

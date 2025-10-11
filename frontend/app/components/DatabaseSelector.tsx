@@ -53,20 +53,14 @@ export default function DatabaseSelector({ onSourceSelect }: DatabaseSelectorPro
           <div className="source-stats">
             {db.id === 'imo' && (
               <>
-                <span className="stat">Difficulty: 7-10</span>
-                <span className="stat">Multi-step proofs</span>
               </>
             )}
             {db.id === 'putnam' && (
               <>
-                <span className="stat">Difficulty: 4-8</span>
-                <span className="stat">12 problems/year</span>
               </>
             )}
             {db.id === 'mit' && (
               <>
-                <span className="stat">Difficulty: 2-6</span>
-                <span className="stat">Integration focus</span>
               </>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import { DATABASE_CONFIGS } from '../../config/databaseConfig';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,9 +10,10 @@ export async function GET(request: NextRequest) {
     const contest = searchParams.get('contest') || 'imo';
     
     let db: any;
-    if (contest === 'imo') db = (env as any).IMO_DB;
-    else if (contest === 'putnam') db = (env as any).PUTNAM_DB;
-    else if (contest === 'mit') db = (env as any).MIT_DB;
+    const db_names = DATABASE_CONFIGS.map(config => config.source);
+    if (db_names.includes(contest)) {
+      db = (env as any)[DATABASE_CONFIGS.find(config => config.source === contest)?.key || ''];
+    }
     else {
       return Response.json({ error: 'Invalid contest' }, { status: 400 });
     }
@@ -20,7 +22,7 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: `${contest} database not found` }, { status: 500 });
     }
     
-    const result = await db.prepare('SELECT * FROM problems LIMIT 10').all();
+    const result = await db.prepare('SELECT * FROM problems').all();
     
     return Response.json({ 
       success: true,

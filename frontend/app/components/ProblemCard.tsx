@@ -63,7 +63,9 @@ export default function ProblemCard({ problem, source }: ProblemCardProps) {
       <div className="problem-content">
         <div className="problem-statement">
           <h4>Problem Statement</h4>
-          <LaTeXRenderer content={problem.statement} />
+          <LaTeXRenderer 
+            content={problem.statement} 
+          />
         </div>
 
         {problem.solution && (
@@ -80,22 +82,13 @@ export default function ProblemCard({ problem, source }: ProblemCardProps) {
             
             {showSolution && (
               <div className="solution-content">
-                <LaTeXRenderer content={problem.solution} />
+                <LaTeXRenderer 
+                  content={problem.solution} 
+                />
               </div>
             )}
           </div>
         )}
-      </div>
-
-      <div className="problem-footer">
-        <div className="problem-actions">
-          <button className="action-btn bookmark">
-            ⭐ Bookmark
-          </button>
-          <button className="action-btn share">
-            🔗 Share
-          </button>
-        </div>
       </div>
     </div>
   )

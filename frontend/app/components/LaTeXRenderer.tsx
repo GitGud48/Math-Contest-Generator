@@ -1,8 +1,7 @@
 'use client'
 
-import 'katex/dist/katex.min.css'
-import { useEffect, useRef, useState } from 'react'
-import renderMathInElement from 'katex/dist/contrib/auto-render'
+import { MathJax } from 'better-react-mathjax'
+import { useState, useEffect } from 'react'
 
 interface LaTeXRendererProps {
   content: string
@@ -10,62 +9,60 @@ interface LaTeXRendererProps {
   className?: string
 }
 
+function stripUnsupportedLatex(content: string): string {
+  // Remove enumerate/itemize environments and their content markers
+  let cleaned = content
+    .replace(/\\begin\{enumerate\}/g, '')
+    .replace(/\\end\{enumerate\}/g, '')
+    .replace(/\\begin\{itemize\}/g, '')
+    .replace(/\\end\{itemize\}/g, '')
+    .replace(/\\item/g, '')
+    .replace(/\\textbf\{([^}]+)\}/g, '$1')  // Remove bold but keep content
+    .replace(/\\textit\{([^}]+)\}/g, '$1')  // Remove italic but keep content
+    .replace(/\\section\{[^}]+\}/g, '')
+    .replace(/\\subsection\{[^}]+\}/g, '')
+    .replace(/\\noindent/g, '')
+    .replace(/\\vspace\{[^}]+\}/g, '')
+    .replace(/\\hspace\{[^}]+\}/g, '')
+    .replace(/\\emph\{([^}]+)\}/g, '$1')  // Remove emphasis but keep content
+    .replace(/\\begin\{align\*\}/g, '\\begin{align}')  // Convert align* to align
+    .replace(/\\end\{align\*\}/g, '\\end{align}')
+    .replace(/\\begin\{cases}/g, '\\begin{align}')  // Convert cases to align
+    .replace(/\\end\{cases}/g, '\\end{align}')
+  
+  return cleaned
+}
+
 export default function LaTeXRenderer({ 
   content, 
   inline = false, 
   className = '' 
 }: LaTeXRendererProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
   const [isClient, setIsClient] = useState(false)
 
-  // Handle client-side mounting
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Render math whenever content changes
-  useEffect(() => {
-    if (!isClient || !containerRef.current) return
+  content = stripUnsupportedLatex(content)
 
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(() => {
-      if (containerRef.current) {
-        renderMathInElement(containerRef.current, {
-          delimiters: [
-            { left: '$$', right: '$$', display: true },
-            { left: '\\[', right: '\\]', display: true },
-            { left: '$', right: '$', display: false },
-            { left: '\\(', right: '\\)', display: false }
-          ],
-          throwOnError: false,
-          strict: false
-        })
-      }
-    }, 10)
-
-    return () => clearTimeout(timer)
-  }, [content, isClient])
-
-  // Prevent hydration mismatch
   if (!isClient) {
-    return <div className={`latex-content ${className}`}>{content}</div>
-  }
-
-  if (inline) {
-    return (
-      <span 
-        ref={containerRef as any}
-        className={`latex-inline ${className}`}
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
+    return inline ? (
+      <span className={`latex-inline ${className}`}>{content}</span>
+    ) : (
+      <div className={`latex-content ${className}`}>{content}</div>
     )
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className={`latex-content ${className}`}
-      dangerouslySetInnerHTML={{ __html: content }}
-    />
+    <MathJax 
+      inline={inline}
+      className={inline ? `latex-inline ${className}` : `latex-content ${className}`}
+      hideUntilTypeset='first'
+      dynamic={false}
+    >
+      {content}
+    </MathJax>
   )
 }
+

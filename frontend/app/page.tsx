@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import DatabaseSelector from './components/DatabaseSelector'
 import ProblemView from './components/ProblemView'
+import SearchBar from './components/SearchBar'
 
 type DatabaseSource = 'imo' | 'putnam' | 'mit'
 
@@ -23,13 +24,14 @@ export default function Home() {
         <h1>Math Problem Generator</h1>
         <p>Generate and solve mathematical competition problems from IMO, Putnam, and MIT</p>
       </header>
+      <SearchBar />
 
       {!selectedSource ? (
         <DatabaseSelector onSourceSelect={handleSourceSelect} />
       ) : (
         <>
           <button 
-            className="back-button" 
+            className="back-btn" 
             onClick={handleBackToSelection}
           >
             ← Back to Database Selection
